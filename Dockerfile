@@ -1,11 +1,17 @@
+# A CLEAN environment setup!
+
+# Minimal OS for running a Python 3.11 application
 FROM python:3.11-slim
 
+# Keep Python artifacts out of the container
 ENV PYTHONDONTWRITEBYTECODE=1
+# Keep stdout and stderr unbuffered - TODO: TRY REMOVING THIS
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# System deps (kept minimal; torch wheels do not need build tools here)
+# CA certificates are often needed for HTTPS requests, Hugging Face needs this
+# TODO: TRY REMOVING THIS
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
  && rm -rf /var/lib/apt/lists/*
@@ -15,5 +21,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Default command, will exist after you add app/main.py
 CMD ["python", "-m", "app.main"]
