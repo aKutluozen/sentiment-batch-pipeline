@@ -52,3 +52,7 @@ make dashboard-one
 
 ## Then open:
 http://localhost:8001
+
+Dashboard features
+## Upload a CSV, tune params, and run from the UI
+## Watch live progress and view predictions in the table
