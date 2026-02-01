@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 import logging
 import time
 from pathlib import Path
@@ -18,6 +19,12 @@ def _ensure_parent_dir(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
+def _append_run_history(path: Path, record: Dict[str, Any]) -> None:
+    _ensure_parent_dir(path)
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
 def main() -> int:
     setup_logging()
     s = load_settings()
@@ -28,6 +35,7 @@ def main() -> int:
         extra={
             "input_csv": str(s.input_csv),
             "output_csv": str(s.output_csv),
+            "run_history_path": str(s.run_history_path),
             "text_col": s.text_col,
             "id_col": s.id_col,
             "model_name": s.model_name,
@@ -86,6 +94,7 @@ def main() -> int:
                     t = (r.get(s.text_col) or "").strip()
                     texts.append(t)
 
+                batch_start = time.time()
                 try:
                     preds = predict_batch(nlp, texts)
                     metrics.inc_processed(len(batch_rows))
@@ -108,6 +117,8 @@ def main() -> int:
                     metrics.inc_batches()
 
                     return
+                finally:
+                    metrics.observe_batch_duration(time.time() - batch_start)
 
                 for r, pred in zip(batch_rows, preds):
                     out = {
@@ -142,10 +153,34 @@ def main() -> int:
                 flush_batch(batch)
 
     runtime_s = round(time.time() - start, 3)
+    metrics.observe_job_duration(runtime_s)
     logger.info(
         "Job complete",
         extra={"processed": processed, "failed": failed, "runtime_s": runtime_s, "output_csv": str(s.output_csv)},
     )
+
+    try:
+        _append_run_history(
+            s.run_history_path,
+            {
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                "input_csv": str(s.input_csv),
+                "output_csv": str(s.output_csv),
+                "text_col": s.text_col,
+                "id_col": s.id_col,
+                "model_name": s.model_name,
+                "batch_size": s.batch_size,
+                "max_len": s.max_len,
+                "max_rows": s.max_rows,
+                "metrics_port": s.metrics_port,
+                "rows_seen": rows_seen,
+                "processed": processed,
+                "failed": failed,
+                "runtime_s": runtime_s,
+            },
+        )
+    except Exception:
+        logger.exception("Failed to append run history", extra={"run_history_path": str(s.run_history_path)})
 
     # Non-zero if anything failed (useful in CI)
     return 1 if failed > 0 else 0

@@ -1,4 +1,7 @@
-.PHONY: help run cleanup cleanup-cache cleanup-all build
+.PHONY: help run cleanup cleanup-cache cleanup-all build visualize visualize-docker
+
+PYTHON ?= python3
+IMAGE_NAME ?= iqrush
 
 help:
 	@echo "Targets:"
@@ -7,6 +10,8 @@ help:
 	@echo "  cleanup-cache Remove hf_cache Docker volume"
 	@echo "  cleanup-all   Containers + hf_cache volume"
 	@echo "  build    Build the Docker image only"
+	@echo "  visualize Generate run history plot"
+	@echo "  visualize-docker Generate plot inside Docker image"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make run INPUT_CSV=data/Reviews.csv"
@@ -16,6 +21,8 @@ help:
 	@echo "  make cleanup"
 	@echo "  make cleanup-cache"
 	@echo "  make cleanup-all"
+	@echo "  make visualize"
+	@echo "  make visualize-docker"
 
 run:
 	@./run.sh
@@ -37,4 +44,12 @@ clean-all:
 	@./cleanup.sh --all
 
 build:
-	@docker build -t "${IMAGE_NAME:-iqrush}" .
+	@docker build -t "$(IMAGE_NAME)" .
+
+visualize:
+	@$(PYTHON) visualize_runs.py --history output/run_history.jsonl --out output/run_history.png
+
+visualize-docker:
+	@docker build -t "$(IMAGE_NAME)" .
+	@docker run --rm -v "$(PWD)":/app -w /app "$(IMAGE_NAME)" \
+		python visualize_runs.py --history output/run_history.jsonl --out output/run_history.png

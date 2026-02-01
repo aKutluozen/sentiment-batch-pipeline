@@ -23,3 +23,8 @@ CSV_MODE=headerless TEXT_COL_INDEX=5 ID_COL_INDEX=1 ./run.sh
 
 
 Or use Makefile!
+
+Run history and visualization
+## Each run appends a JSONL record to output/run_history.jsonl (override with RUN_HISTORY_PATH)
+## Generate a simple plot:
+python visualize_runs.py --history output/run_history.jsonl --out output/run_history.png
