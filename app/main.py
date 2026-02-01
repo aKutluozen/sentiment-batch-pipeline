@@ -9,6 +9,7 @@ from typing import Any, Dict, List
 from app.config import load_settings
 from app.inference import load_sentiment_pipeline, predict_batch
 from app.logging_utils import setup_logging
+from app.metrics import maybe_start_metrics_server
 
 logger = logging.getLogger("batch_infer")
 
@@ -20,6 +21,7 @@ def _ensure_parent_dir(path: Path) -> None:
 def main() -> int:
     setup_logging()
     s = load_settings()
+    metrics = maybe_start_metrics_server(s.metrics_port)
 
     logger.info(
         "Starting job",
@@ -86,6 +88,9 @@ def main() -> int:
 
                 try:
                     preds = predict_batch(nlp, texts)
+                    metrics.inc_processed(len(batch_rows))
+                    metrics.inc_batches()
+
                 except Exception as e:
                     logger.exception("Batch inference failed", extra={"batch_size": len(batch_rows)})
                     for r in batch_rows:
@@ -99,6 +104,9 @@ def main() -> int:
                             out[s.id_col] = r.get(s.id_col, "")
                         writer.writerow(out)
                     failed += len(batch_rows)
+                    metrics.inc_failed(len(batch_rows))
+                    metrics.inc_batches()
+
                     return
 
                 for r, pred in zip(batch_rows, preds):
@@ -116,6 +124,11 @@ def main() -> int:
 
             for r in reader:
                 rows_seen += 1
+
+                if s.max_rows is not None and rows_seen > s.max_rows:
+                    logger.info("Row limit reached", extra={"max_rows": s.max_rows})
+                    break
+
                 batch.append(r)
                 if len(batch) >= s.batch_size:
                     flush_batch(batch)

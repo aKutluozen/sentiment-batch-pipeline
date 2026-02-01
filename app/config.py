@@ -40,6 +40,7 @@ class Settings:
     output_csv: Path
     text_col: str
     id_col: str | None
+    max_rows: int | None
     model_name: str
     batch_size: int
     max_len: int
@@ -68,6 +69,10 @@ def load_settings() -> Settings:
     max_len = _get_int("MAX_LEN", 256)
     if max_len <= 0:
         raise ValueError("MAX_LEN must be > 0")
+    
+    max_rows = _get_optional_int("MAX_ROWS")
+    if max_rows is not None and max_rows <= 0:
+        raise ValueError("MAX_ROWS must be > 0")
 
     metrics_port = _get_optional_int("METRICS_PORT")
     if metrics_port is not None and not (1 <= metrics_port <= 65535):
@@ -78,6 +83,7 @@ def load_settings() -> Settings:
         output_csv=output_csv,
         text_col=text_col,
         id_col=id_col,
+        max_rows=max_rows,
         model_name=model_name,
         batch_size=batch_size,
         max_len=max_len,
