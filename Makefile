@@ -1,4 +1,4 @@
-.PHONY: help run cleanup cleanup-cache cleanup-all build visualize visualize-docker dashboard-api dashboard-web dashboard-up dashboard-down dashboard-one
+.PHONY: help run cleanup cleanup-cache cleanup-all build visualize visualize-docker dashboard-api dashboard-web dashboard-up dashboard-down dashboard-one clean-artifacts
 
 VENV_PY := $(wildcard .venv/bin/python)
 ifeq ($(VENV_PY),)
@@ -22,6 +22,7 @@ help:
 	@echo "  dashboard-up Run dashboard via docker compose"
 	@echo "  dashboard-down Stop dashboard containers"
 	@echo "  dashboard-one Run dashboard as a single container"
+	@echo "  clean-artifacts Remove output artifacts (runs, logs, uploads)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make run INPUT_CSV=data/Reviews.csv"
@@ -38,6 +39,7 @@ help:
 	@echo "  make dashboard-up"
 	@echo "  make dashboard-down"
 	@echo "  make dashboard-one"
+	@echo "  make clean-artifacts"
 
 run:
 	@./run.sh
@@ -84,3 +86,6 @@ dashboard-down:
 dashboard-one:
 	@docker build -f Dockerfile.dashboard -t iqrush-dashboard .
 	@docker run --rm -p 8001:8001 -v "$(PWD)/output":/app/output iqrush-dashboard
+
+clean-artifacts:
+	@rm -rf output/run_history.jsonl output/live_metrics.json output/run_history.png output/uploads output/run_logs output/predictions.csv
