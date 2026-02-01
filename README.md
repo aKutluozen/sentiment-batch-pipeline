@@ -28,3 +28,20 @@ Run history and visualization
 ## Each run appends a JSONL record to output/run_history.jsonl (override with RUN_HISTORY_PATH)
 ## Generate a simple plot:
 python visualize_runs.py --history output/run_history.jsonl --out output/run_history.png
+
+Dashboard (React + FastAPI)
+## Backend API (live + history):
+make dashboard-api
+
+## Frontend (Vite dev server):
+make dashboard-web
+
+## Then open:
+http://localhost:5173
+
+Dockerized dashboard
+## Bring up API + web (Docker Compose):
+make dashboard-up
+
+## Tear down:
+make dashboard-down

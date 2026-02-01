@@ -39,6 +39,7 @@ class Settings:
     input_csv: Path
     output_csv: Path
     run_history_path: Path
+    run_live_path: Path
     text_col: str
     id_col: str | None
     max_rows: int | None
@@ -52,6 +53,7 @@ def load_settings() -> Settings:
     input_csv = Path(_get_str("INPUT_CSV", "data/input.csv"))
     output_csv = Path(_get_str("OUTPUT_CSV", "output/predictions.csv"))
     run_history_path = Path(_get_str("RUN_HISTORY_PATH", "output/run_history.jsonl"))
+    run_live_path = Path(_get_str("RUN_LIVE_PATH", "output/live_metrics.json"))
 
     text_col = _get_str("TEXT_COL", "Text")
 
@@ -84,6 +86,7 @@ def load_settings() -> Settings:
         input_csv=input_csv,
         output_csv=output_csv,
         run_history_path=run_history_path,
+        run_live_path=run_live_path,
         text_col=text_col,
         id_col=id_col,
         max_rows=max_rows,

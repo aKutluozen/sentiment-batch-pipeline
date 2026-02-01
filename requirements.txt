@@ -4,3 +4,5 @@ pandas==2.2.3
 tqdm==4.67.1 # Progress bar
 prometheus-client==0.21.0 # Metrics collection
 matplotlib==3.9.4
+fastapi==0.115.5
+uvicorn==0.32.1

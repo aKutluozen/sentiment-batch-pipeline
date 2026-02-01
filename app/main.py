@@ -25,6 +25,12 @@ def _append_run_history(path: Path, record: Dict[str, Any]) -> None:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
+def _write_live_metrics(path: Path, record: Dict[str, Any]) -> None:
+    _ensure_parent_dir(path)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(record, f, ensure_ascii=False)
+
+
 def main() -> int:
     setup_logging()
     s = load_settings()
@@ -36,6 +42,7 @@ def main() -> int:
             "input_csv": str(s.input_csv),
             "output_csv": str(s.output_csv),
             "run_history_path": str(s.run_history_path),
+            "run_live_path": str(s.run_live_path),
             "text_col": s.text_col,
             "id_col": s.id_col,
             "model_name": s.model_name,
@@ -54,6 +61,30 @@ def main() -> int:
     start = time.time()
     processed = 0
     failed = 0
+    rows_seen = 0
+    try:
+        _write_live_metrics(
+            s.run_live_path,
+            {
+                "status": "running",
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                "input_csv": str(s.input_csv),
+                "output_csv": str(s.output_csv),
+                "text_col": s.text_col,
+                "id_col": s.id_col,
+                "model_name": s.model_name,
+                "batch_size": s.batch_size,
+                "max_len": s.max_len,
+                "max_rows": s.max_rows,
+                "metrics_port": s.metrics_port,
+                "rows_seen": rows_seen,
+                "processed": processed,
+                "failed": failed,
+                "runtime_s": 0,
+            },
+        )
+    except Exception:
+        logger.exception("Failed to write live metrics", extra={"run_live_path": str(s.run_live_path)})
 
     logger.info("Loading model...", extra={"model_name": s.model_name})
     nlp = load_sentiment_pipeline(s.model_name, s.max_len)
@@ -84,7 +115,6 @@ def main() -> int:
             writer.writeheader()
 
             batch: List[Dict[str, str]] = []
-            rows_seen = 0
 
             def flush_batch(batch_rows: List[Dict[str, str]]) -> None:
                 nonlocal processed, failed
@@ -119,6 +149,29 @@ def main() -> int:
                     return
                 finally:
                     metrics.observe_batch_duration(time.time() - batch_start)
+                    try:
+                        _write_live_metrics(
+                            s.run_live_path,
+                            {
+                                "status": "running",
+                                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                                "input_csv": str(s.input_csv),
+                                "output_csv": str(s.output_csv),
+                                "text_col": s.text_col,
+                                "id_col": s.id_col,
+                                "model_name": s.model_name,
+                                "batch_size": s.batch_size,
+                                "max_len": s.max_len,
+                                "max_rows": s.max_rows,
+                                "metrics_port": s.metrics_port,
+                                "rows_seen": rows_seen,
+                                "processed": processed,
+                                "failed": failed,
+                                "runtime_s": round(time.time() - start, 3),
+                            },
+                        )
+                    except Exception:
+                        logger.exception("Failed to write live metrics", extra={"run_live_path": str(s.run_live_path)})
 
                 for r, pred in zip(batch_rows, preds):
                     out = {
@@ -158,6 +211,30 @@ def main() -> int:
         "Job complete",
         extra={"processed": processed, "failed": failed, "runtime_s": runtime_s, "output_csv": str(s.output_csv)},
     )
+
+    try:
+        _write_live_metrics(
+            s.run_live_path,
+            {
+                "status": "complete",
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                "input_csv": str(s.input_csv),
+                "output_csv": str(s.output_csv),
+                "text_col": s.text_col,
+                "id_col": s.id_col,
+                "model_name": s.model_name,
+                "batch_size": s.batch_size,
+                "max_len": s.max_len,
+                "max_rows": s.max_rows,
+                "metrics_port": s.metrics_port,
+                "rows_seen": rows_seen,
+                "processed": processed,
+                "failed": failed,
+                "runtime_s": runtime_s,
+            },
+        )
+    except Exception:
+        logger.exception("Failed to write live metrics", extra={"run_live_path": str(s.run_live_path)})
 
     try:
         _append_run_history(
