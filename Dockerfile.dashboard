@@ -1,0 +1,31 @@
+FROM node:20-alpine AS webbuild
+
+WORKDIR /web
+COPY web/package.json web/tsconfig.json web/tsconfig.node.json web/vite.config.ts web/index.html ./
+COPY web/src ./src
+RUN npm install
+RUN npm run build
+
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+COPY --from=webbuild /web/dist /app/web/dist
+
+ENV DASHBOARD_DIST=/app/web/dist
+ENV RUN_HISTORY_PATH=/app/output/run_history.jsonl
+ENV RUN_LIVE_PATH=/app/output/live_metrics.json
+
+EXPOSE 8001
+CMD ["uvicorn", "dashboard_api.main:app", "--host", "0.0.0.0", "--port", "8001"]

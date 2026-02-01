@@ -45,3 +45,10 @@ make dashboard-up
 
 ## Tear down:
 make dashboard-down
+
+Single-container dashboard
+## Build + run UI + API in one container (serves UI from FastAPI):
+make dashboard-one
+
+## Then open:
+http://localhost:8001

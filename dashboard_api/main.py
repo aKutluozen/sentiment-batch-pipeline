@@ -9,9 +9,11 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 RUN_HISTORY_PATH = Path(os.getenv("RUN_HISTORY_PATH", "output/run_history.jsonl"))
 RUN_LIVE_PATH = Path(os.getenv("RUN_LIVE_PATH", "output/live_metrics.json"))
+DASHBOARD_DIST = Path(os.getenv("DASHBOARD_DIST", "web/dist"))
 
 app = FastAPI(title="IQRush Dashboard API")
 
@@ -86,3 +88,7 @@ async def live_stream() -> StreamingResponse:
             await asyncio.sleep(1)
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+if DASHBOARD_DIST.exists():
+    app.mount("/", StaticFiles(directory=DASHBOARD_DIST, html=True), name="dashboard")

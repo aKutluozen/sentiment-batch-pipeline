@@ -1,4 +1,4 @@
-.PHONY: help run cleanup cleanup-cache cleanup-all build visualize visualize-docker dashboard-api dashboard-web dashboard-up dashboard-down
+.PHONY: help run cleanup cleanup-cache cleanup-all build visualize visualize-docker dashboard-api dashboard-web dashboard-up dashboard-down dashboard-one
 
 VENV_PY := $(wildcard .venv/bin/python)
 ifeq ($(VENV_PY),)
@@ -21,6 +21,7 @@ help:
 	@echo "  dashboard-web Run React dashboard frontend"
 	@echo "  dashboard-up Run dashboard via docker compose"
 	@echo "  dashboard-down Stop dashboard containers"
+	@echo "  dashboard-one Run dashboard as a single container"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make run INPUT_CSV=data/Reviews.csv"
@@ -36,6 +37,7 @@ help:
 	@echo "  make dashboard-web"
 	@echo "  make dashboard-up"
 	@echo "  make dashboard-down"
+	@echo "  make dashboard-one"
 
 run:
 	@./run.sh
@@ -78,3 +80,7 @@ dashboard-up:
 
 dashboard-down:
 	@docker compose down
+
+dashboard-one:
+	@docker build -f Dockerfile.dashboard -t iqrush-dashboard .
+	@docker run --rm -p 8001:8001 -v "$(PWD)/output":/app/output iqrush-dashboard
