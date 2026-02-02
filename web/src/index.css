@@ -232,6 +232,14 @@ body {
   color: #e6e8ff;
 }
 
+.form select {
+  background: rgba(11, 13, 28, 0.8);
+  border: 1px solid rgba(60, 66, 130, 0.6);
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #e6e8ff;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

@@ -12,12 +12,14 @@ import {
 import { Line } from "react-chartjs-2";
 import {
   cancelRun,
+  fetchModels,
   fetchPredictions,
   fetchRunStatus,
   fetchRuns,
   fetchSummary,
   GroupSummary,
   LiveSnapshot,
+  ModelInfo,
   RunStatus,
   startRun,
   subscribeLive,
@@ -50,10 +52,18 @@ export default function App() {
     metrics_port: "",
   });
   const [runStatus, setRunStatus] = useState<RunStatus | null>(null);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [modelMode, setModelMode] = useState<"list" | "custom">("list");
 
   useEffect(() => {
     const source = subscribeLive(setLive);
     return () => source.close();
+  }, []);
+
+  useEffect(() => {
+    fetchModels()
+      .then(setModels)
+      .catch(() => setModels([]));
   }, []);
 
   useEffect(() => {
@@ -242,12 +252,38 @@ export default function App() {
               />
             </label>
             <label>
-              Model name
-              <input
-                value={params.model_name}
-                onChange={(e) => setParams({ ...params, model_name: e.target.value })}
-              />
+              Model
+              <select
+                value={modelMode === "list" ? params.model_name : "__custom__"}
+                onChange={(e) => {
+                  if (e.target.value === "__custom__") {
+                    setModelMode("custom");
+                  } else {
+                    setModelMode("list");
+                    setParams({ ...params, model_name: e.target.value });
+                  }
+                }}
+              >
+                {models.length === 0 && (
+                  <option value={params.model_name}>{params.model_name}</option>
+                )}
+                {models.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.id}
+                  </option>
+                ))}
+                <option value="__custom__">Custom...</option>
+              </select>
             </label>
+            {modelMode === "custom" && (
+              <label>
+                Custom model name
+                <input
+                  value={params.model_name}
+                  onChange={(e) => setParams({ ...params, model_name: e.target.value })}
+                />
+              </label>
+            )}
             <div className="form-row">
               <label>
                 Batch size

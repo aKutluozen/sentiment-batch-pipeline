@@ -8,6 +8,8 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Any, Dict, IO, List, Optional
 
@@ -26,6 +28,16 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 _current_process: subprocess.Popen[str] | None = None
 _current_log_path: Path | None = None
 _current_log_file: IO[str] | None = None
+_models_cache: List[Dict[str, Any]] = []
+_models_cache_ts: float | None = None
+_models_cache_ttl_s = 60 * 60 * 6
+_default_models = [
+    {"id": "distilbert-base-uncased-finetuned-sst-2-english", "likes": 0, "downloads": 0},
+    {"id": "cardiffnlp/twitter-roberta-base-sentiment", "likes": 0, "downloads": 0},
+    {"id": "nlptown/bert-base-multilingual-uncased-sentiment", "likes": 0, "downloads": 0},
+    {"id": "siebert/sentiment-roberta-large-english", "likes": 0, "downloads": 0},
+    {"id": "finiteautomata/bertweet-base-sentiment-analysis", "likes": 0, "downloads": 0},
+]
 
 app = FastAPI(title="IQRush Dashboard API")
 
@@ -90,6 +102,32 @@ def _read_summary(path: Path) -> Dict[str, Any] | None:
         return None
 
 
+def _fetch_models_from_hf(limit: int = 50) -> List[Dict[str, Any]]:
+    params = urllib.parse.urlencode(
+        {
+            "pipeline_tag": "sentiment-analysis",
+            "sort": "trending",
+            "limit": str(limit),
+        }
+    )
+    url = f"https://huggingface.co/api/models?{params}"
+    with urllib.request.urlopen(url, timeout=10) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    models: List[Dict[str, Any]] = []
+    for item in payload:
+        model_id = item.get("modelId") or item.get("id")
+        if not model_id:
+            continue
+        models.append(
+            {
+                "id": model_id,
+                "likes": item.get("likes", 0),
+                "downloads": item.get("downloads", 0),
+            }
+        )
+    return models
+
+
 def _summary_path_for_output(output_csv: str) -> Path:
     output_path = Path(output_csv)
     return output_path.with_name(f"{output_path.stem}_group_summary.json")
@@ -146,6 +184,21 @@ def _watch_process(proc: subprocess.Popen[str]) -> None:
 @app.get("/api/health")
 def health() -> Dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/models")
+def list_models(limit: int = Query(default=50, ge=1, le=200)) -> JSONResponse:
+    global _models_cache, _models_cache_ts
+    now = time.time()
+    if _models_cache_ts is None or (now - _models_cache_ts) > _models_cache_ttl_s:
+        try:
+            _models_cache = _fetch_models_from_hf(limit)
+            _models_cache_ts = now
+        except Exception:
+            if not _models_cache:
+                _models_cache = _default_models
+                _models_cache_ts = now
+    return JSONResponse({"models": _models_cache[:limit]})
 
 
 @app.get("/api/runs")

@@ -40,6 +40,12 @@ export type GroupSummary = {
   }>;
 };
 
+export type ModelInfo = {
+  id: string;
+  likes: number;
+  downloads: number;
+};
+
 export type RunStatus = {
   running: boolean;
   pid: number | null;
@@ -94,6 +100,15 @@ export async function fetchRunStatus(): Promise<RunStatus> {
     throw new Error("Failed to fetch run status");
   }
   return res.json();
+}
+
+export async function fetchModels(): Promise<ModelInfo[]> {
+  const res = await fetch("/api/models");
+  if (!res.ok) {
+    throw new Error("Failed to fetch models");
+  }
+  const data = await res.json();
+  return data.models ?? [];
 }
 
 export async function cancelRun(): Promise<void> {
