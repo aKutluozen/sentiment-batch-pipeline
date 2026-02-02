@@ -3,6 +3,7 @@ FROM node:20-alpine AS webbuild
 WORKDIR /web
 COPY web/package.json web/tsconfig.json web/tsconfig.node.json web/vite.config.ts web/index.html ./
 COPY web/src ./src
+COPY web/public ./public
 RUN npm install
 RUN npm run build
 
