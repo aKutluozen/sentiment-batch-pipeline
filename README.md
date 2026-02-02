@@ -1,58 +1,26 @@
-Quickstart
-```
-chmod +x run.sh
-./run.sh
-```
+Two ways to run
 
-
-Optional alternative:
-
+1) Headless (batch inference, no UI)
 ```
-bash run.sh
+make headless INPUT_CSV=data/Reviews.csv
 ```
 
 Common overrides
-## Enable metrics
-METRICS_PORT=8000 ./run.sh
+- Enable metrics: `METRICS_PORT=8000 make headless`
+- Limit rows: `MAX_ROWS=10000 make headless`
+- Headerless CSV: `CSV_MODE=headerless TEXT_COL_INDEX=5 ID_COL_INDEX=1 make headless`
 
-## Limit rows for fast testing
-MAX_ROWS=10000 ./run.sh
-
-## Headerless CSV (Sentiment140)
-CSV_MODE=headerless TEXT_COL_INDEX=5 ID_COL_INDEX=1 ./run.sh
-
-
-Or use Makefile!
-
-Run history and visualization
-## Each run appends a JSONL record to output/run_history.jsonl (override with RUN_HISTORY_PATH)
-## Generate a simple plot:
-python visualize_runs.py --history output/run_history.jsonl --out output/run_history.png
-
-Dashboard (React + FastAPI)
-## Backend API (live + history):
-make dashboard-api
-
-## Frontend (Vite dev server):
-make dashboard-web
-
-## Then open:
-http://localhost:5173
-
-Dockerized dashboard
-## Bring up API + web (Docker Compose):
-make dashboard-up
-
-## Tear down:
-make dashboard-down
-
-Single-container dashboard
-## Build + run UI + API in one container (serves UI from FastAPI):
-make dashboard-one
-
-## Then open:
-http://localhost:8001
+2) Dashboard (UI + API in one container)
+```
+make dashboard
+```
+Open http://localhost:8001
 
 Dashboard features
-## Upload a CSV, tune params, and run from the UI
-## Watch live progress and view predictions in the table
+- Upload a CSV, tune params, run from the UI
+- Live progress, history charts, searchable runs
+- Predictions table
+
+Extras
+- Generate plots: `make visualize`
+- Clean artifacts: `make clean-artifacts`

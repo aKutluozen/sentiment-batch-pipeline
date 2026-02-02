@@ -1,0 +1,12 @@
+2026-02-02 15:11:23,582 INFO batch_infer Starting job
+2026-02-02 15:11:23,637 INFO batch_infer Loading model...
+2026-02-02 15:11:30,776 INFO batch_infer Model loaded
+2026-02-02 15:11:34,840 INFO batch_infer Batch complete
+2026-02-02 15:11:38,912 INFO batch_infer Batch complete
+2026-02-02 15:11:42,933 INFO batch_infer Batch complete
+2026-02-02 15:11:47,133 INFO batch_infer Batch complete
+2026-02-02 15:11:51,775 INFO batch_infer Batch complete
+2026-02-02 15:11:56,198 INFO batch_infer Batch complete
+2026-02-02 15:12:00,611 INFO batch_infer Batch complete
+2026-02-02 15:12:00,612 INFO batch_infer Row limit reached
+2026-02-02 15:12:04,136 INFO batch_infer Job complete

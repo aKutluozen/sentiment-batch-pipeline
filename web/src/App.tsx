@@ -288,6 +288,9 @@ export default function App() {
               </button>
             </div>
           </form>
+        </div>
+        <div className="card">
+          <h2>Run logs</h2>
           <div className="log">
             <div className="row">
               <strong>Run logs</strong>
@@ -296,6 +299,7 @@ export default function App() {
             <pre>{runStatus?.log_tail || "No logs yet."}</pre>
           </div>
         </div>
+
         <div className="card">
           <h2>Live metrics</h2>
           {live ? (
@@ -327,36 +331,6 @@ export default function App() {
             </div>
           ) : (
             <p className="muted">No live data yet. Start a run.</p>
-          )}
-        </div>
-
-        <div className="card">
-          <h2>Current parameters</h2>
-          {live ? (
-            <div className="params">
-              <div>
-                <span>Input</span>
-                <strong className="mono">{live.input_csv}</strong>
-              </div>
-              <div>
-                <span>Output</span>
-                <strong className="mono">{live.output_csv}</strong>
-              </div>
-              <div>
-                <span>Model</span>
-                <strong className="mono">{live.model_name}</strong>
-              </div>
-              <div>
-                <span>Text column</span>
-                <strong>{live.text_col}</strong>
-              </div>
-              <div>
-                <span>ID column</span>
-                <strong>{live.id_col ?? "(none)"}</strong>
-              </div>
-            </div>
-          ) : (
-            <p className="muted">No run detected yet.</p>
           )}
         </div>
       </section>

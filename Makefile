@@ -1,4 +1,4 @@
-.PHONY: help run cleanup cleanup-cache cleanup-all build visualize visualize-docker dashboard-api dashboard-web dashboard-up dashboard-down dashboard-one clean-artifacts
+.PHONY: help headless dashboard run cleanup cleanup-cache cleanup-all build visualize visualize-docker dashboard-api dashboard-web dashboard-up dashboard-down dashboard-one clean-artifacts
 
 VENV_PY := $(wildcard .venv/bin/python)
 ifeq ($(VENV_PY),)
@@ -10,6 +10,8 @@ IMAGE_NAME ?= iqrush
 
 help:
 	@echo "Targets:"
+	@echo "  headless     Run batch inference (no UI)"
+	@echo "  dashboard    Run dashboard (single container)"
 	@echo "  run      Build image and run container (wraps ./run.sh)"
 	@echo "  cleanup       Stop/remove all Docker containers (wraps ./cleanup.sh)"
 	@echo "  cleanup-cache Remove hf_cache Docker volume"
@@ -25,6 +27,8 @@ help:
 	@echo "  clean-artifacts Remove output artifacts (runs, logs, uploads)"
 	@echo ""
 	@echo "Examples:"
+	@echo "  make headless INPUT_CSV=data/Reviews.csv"
+	@echo "  make dashboard"
 	@echo "  make run INPUT_CSV=data/Reviews.csv"
 	@echo "  make run INPUT_CSV=data/Reviews.csv OUTPUT_CSV=output/predictions.csv"
 	@echo "  make run INPUT_CSV=data/Reviews.csv BATCH_SIZE=128 MAX_ROWS=1000"
@@ -40,6 +44,12 @@ help:
 	@echo "  make dashboard-down"
 	@echo "  make dashboard-one"
 	@echo "  make clean-artifacts"
+
+headless:
+	@./run.sh
+
+dashboard:
+	@$(MAKE) dashboard-one
 
 run:
 	@./run.sh
