@@ -5,9 +5,6 @@ import { LiveSnapshot } from "../api";
 type RunHistoryCardProps = {
   query: string;
   setQuery: (value: string) => void;
-  datasetFilter: string;
-  setDatasetFilter: (value: string) => void;
-  datasetOptions: string[];
   loading: boolean;
   error: string | null;
   filteredRuns: LiveSnapshot[];
@@ -19,9 +16,6 @@ type RunHistoryCardProps = {
 export default function RunHistoryCard({
   query,
   setQuery,
-  datasetFilter,
-  setDatasetFilter,
-  datasetOptions,
   loading,
   error,
   filteredRuns,
@@ -41,13 +35,6 @@ export default function RunHistoryCard({
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <select value={datasetFilter} onChange={(e) => setDatasetFilter(e.target.value)}>
-            {datasetOptions.map((dataset) => (
-              <option key={dataset} value={dataset}>
-                {dataset === "all" ? "All datasets" : dataset}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
       {loading && <p className="muted">Loading runs...</p>}

@@ -27,7 +27,7 @@ import {
   subscribeLive,
 } from "./api";
 import HeaderBar from "./components/HeaderBar";
-import LiveMetricsCard from "./components/LiveMetricsCard";
+import DatasetFilterCard from "./components/DatasetFilterCard";
 import PredictionsCard from "./components/PredictionsCard";
 import RecentRunsCard from "./components/RecentRunsCard";
 import RunComparisonsCard from "./components/RunComparisonsCard";
@@ -602,16 +602,18 @@ export default function App() {
           onSubmit={handleRunSubmit}
           onCancel={() => cancelRun().catch(() => undefined)}
         />
-        <RunLogsCard runStatus={runStatus} />
-        <LiveMetricsCard live={live} />
+        <RunLogsCard runStatus={runStatus} live={live} className="card--wide" />
       </section>
+
+      <DatasetFilterCard
+        datasetFilter={datasetFilter}
+        setDatasetFilter={setDatasetFilter}
+        datasetOptions={datasetOptions}
+      />
 
       <RunHistoryCard
         query={query}
         setQuery={setQuery}
-        datasetFilter={datasetFilter}
-        setDatasetFilter={setDatasetFilter}
-        datasetOptions={datasetOptions}
         loading={loading}
         error={error}
         filteredRuns={filteredRuns}

@@ -90,6 +90,10 @@ body {
   backdrop-filter: blur(8px);
 }
 
+.card--wide {
+  grid-column: span 2;
+}
+
 .card h2 {
   margin: 0 0 16px;
   font-size: 18px;
@@ -364,8 +368,10 @@ button.secondary {
   background: rgba(11, 13, 28, 0.8);
   border: 1px solid rgba(60, 66, 130, 0.6);
   border-radius: 12px;
-  height: 95%;
+  height: 80%;
+  max-height: 450px;
   overflow: auto;
+  word-break: break-word;
 }
 
 .summary-controls {

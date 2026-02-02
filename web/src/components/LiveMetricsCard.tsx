@@ -26,14 +26,6 @@ export default function LiveMetricsCard({ live }: LiveMetricsCardProps) {
             <span>Runtime</span>
             <strong>{live.runtime_s}s</strong>
           </div>
-          <div>
-            <span>Batch size</span>
-            <strong>{live.batch_size}</strong>
-          </div>
-          <div>
-            <span>Max rows</span>
-            <strong>{live.max_rows ?? "∞"}</strong>
-          </div>
         </div>
       ) : (
         <p className="muted">No live data yet. Start a run.</p>
