@@ -149,6 +149,12 @@ body {
   color: #e6e8ff;
 }
 
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -160,6 +166,10 @@ body {
   border-radius: 12px;
   padding: 12px;
   border: 1px solid rgba(60, 66, 130, 0.6);
+}
+
+.matrix-chart {
+  height: 280px;
 }
 
 .table {
@@ -175,6 +185,47 @@ body {
   font-size: 13px;
   padding: 10px 8px;
   border-radius: 10px;
+}
+
+.summary-table .row {
+  grid-template-columns: 2fr repeat(4, minmax(80px, 1fr));
+}
+
+.comparison-table .row {
+  grid-template-columns: repeat(7, minmax(90px, 1fr));
+}
+
+.mini-sentiment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-track {
+  width: 70px;
+  height: 6px;
+  background: rgba(76, 109, 255, 0.2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.mini-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #4c6dff, #48d07a);
+}
+
+.mini-fill.text-positive {
+  background: #48d07a;
+}
+
+.mini-fill.text-negative {
+  background: #ff6b6b;
+}
+
+.table-scroll {
+  max-height: 320px;
+  overflow: auto;
 }
 
 .table .row.header {
@@ -284,6 +335,52 @@ button.secondary {
   border-radius: 12px;
   height: 95%;
   overflow: auto;
+}
+
+.summary-controls {
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.text-positive {
+  color: #48d07a;
+}
+
+.text-negative {
+  color: #ff6b6b;
+}
+
+.text-average {
+  color: #4c6dff;
+}
+
+.score-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-bar {
+  width: 60px;
+  height: 6px;
+  background: rgba(76, 109, 255, 0.2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.score-fill {
+  display: block;
+  height: 100%;
+  background: #4c6dff;
+}
+
+.score-fill.text-positive {
+  background: #48d07a;
+}
+
+.score-fill.text-negative {
+  background: #ff6b6b;
 }
 
 .log pre {

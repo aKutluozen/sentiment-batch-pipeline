@@ -137,7 +137,6 @@ def main() -> int:
             "run_history_path": str(s.run_history_path),
             "run_live_path": str(s.run_live_path),
             "text_col": s.text_col,
-            "id_col": s.id_col,
             "model_name": s.model_name,
             "batch_size": s.batch_size,
             "max_len": s.max_len,
@@ -155,6 +154,10 @@ def main() -> int:
     processed = 0
     failed = 0
     rows_seen = 0
+    score_sum = 0.0
+    positive = 0
+    negative = 0
+    neutral = 0
     group_stats: Dict[str, Dict[str, float]] = {}
     try:
         _write_live_metrics(
@@ -165,7 +168,6 @@ def main() -> int:
                 "input_csv": str(s.input_csv),
                 "output_csv": str(s.output_csv),
                 "text_col": s.text_col,
-                "id_col": s.id_col,
                 "model_name": s.model_name,
                 "batch_size": s.batch_size,
                 "max_len": s.max_len,
@@ -174,6 +176,10 @@ def main() -> int:
                 "rows_seen": rows_seen,
                 "processed": processed,
                 "failed": failed,
+                "avg_score": 0,
+                "positive": positive,
+                "negative": negative,
+                "neutral": neutral,
                 "runtime_s": 0,
             },
         )
@@ -210,20 +216,12 @@ def main() -> int:
                     break
 
         dataset_type, group_col = _detect_dataset(headers)
-        id_col = s.id_col if s.id_col else group_col
 
         if text_col not in headers:
             logger.error("TEXT_COL not found in CSV headers", extra={"text_col": text_col, "headers": list(headers)})
             return 2
-        if s.id_col and s.id_col not in headers:
-            logger.error("ID_COL not found in CSV headers", extra={"id_col": s.id_col, "headers": list(headers)})
-            return 2
-        if id_col and id_col not in headers:
-            id_col = None
 
         out_headers: List[str] = []
-        if id_col:
-            out_headers.append(id_col)
         out_headers += [text_col, "label", "score", "error"]
 
         with s.output_csv.open("w", newline="", encoding="utf-8") as f_out:
@@ -233,7 +231,7 @@ def main() -> int:
             batch: List[Dict[str, str]] = []
 
             def flush_batch(batch_rows: List[Dict[str, str]]) -> None:
-                nonlocal processed, failed
+                nonlocal processed, failed, score_sum, positive, negative, neutral
 
                 texts: List[str] = []
                 for r in batch_rows:
@@ -255,8 +253,6 @@ def main() -> int:
                             "score": "",
                             "error": str(e),
                         }
-                        if id_col:
-                            out[id_col] = r.get(id_col, "")
                         writer.writerow(out)
                     failed += len(batch_rows)
                     metrics.inc_failed(len(batch_rows))
@@ -274,7 +270,6 @@ def main() -> int:
                                 "input_csv": str(s.input_csv),
                                 "output_csv": str(s.output_csv),
                                 "text_col": text_col,
-                                "id_col": id_col,
                                 "model_name": s.model_name,
                                 "batch_size": s.batch_size,
                                 "max_len": s.max_len,
@@ -285,6 +280,10 @@ def main() -> int:
                                 "rows_seen": rows_seen,
                                 "processed": processed,
                                 "failed": failed,
+                                "avg_score": round(score_sum / processed, 6) if processed else 0,
+                                "positive": positive,
+                                "negative": negative,
+                                "neutral": neutral,
                                 "runtime_s": round(time.time() - start, 3),
                             },
                         )
@@ -294,22 +293,28 @@ def main() -> int:
                 for r, pred in zip(batch_rows, preds):
                     label = pred.get("label", "")
                     score = pred.get("score", "")
+                    label_norm = (label or "").lower()
+                    try:
+                        score_val = float(score)
+                    except (TypeError, ValueError):
+                        score_val = 0.0
+                    score_sum += score_val
+                    if "pos" in label_norm:
+                        positive += 1
+                    elif "neg" in label_norm:
+                        negative += 1
+                    else:
+                        neutral += 1
                     out = {
                         text_col: r.get(text_col, ""),
                         "label": label,
                         "score": score,
                         "error": "",
                     }
-                    if id_col:
-                        out[id_col] = r.get(id_col, "")
                     writer.writerow(out)
 
                     if group_col and group_col in headers:
                         group_value = (r.get(group_col) or "").strip() or "(unknown)"
-                        try:
-                            score_val = float(score)
-                        except (TypeError, ValueError):
-                            score_val = 0.0
                         _update_group_stats(group_stats, group_value, label, score_val)
 
                 processed += len(batch_rows)
@@ -349,7 +354,6 @@ def main() -> int:
                 "input_csv": str(s.input_csv),
                 "output_csv": str(s.output_csv),
                 "text_col": text_col,
-                "id_col": id_col,
                 "model_name": s.model_name,
                 "batch_size": s.batch_size,
                 "max_len": s.max_len,
@@ -360,6 +364,10 @@ def main() -> int:
                 "rows_seen": rows_seen,
                 "processed": processed,
                 "failed": failed,
+                "avg_score": round(score_sum / processed, 6) if processed else 0,
+                "positive": positive,
+                "negative": negative,
+                "neutral": neutral,
                 "runtime_s": runtime_s,
             },
         )
@@ -374,7 +382,6 @@ def main() -> int:
                 "input_csv": str(s.input_csv),
                 "output_csv": str(s.output_csv),
                 "text_col": text_col,
-                "id_col": id_col,
                 "model_name": s.model_name,
                 "batch_size": s.batch_size,
                 "max_len": s.max_len,
@@ -385,6 +392,10 @@ def main() -> int:
                 "rows_seen": rows_seen,
                 "processed": processed,
                 "failed": failed,
+                "avg_score": round(score_sum / processed, 6) if processed else 0,
+                "positive": positive,
+                "negative": negative,
+                "neutral": neutral,
                 "runtime_s": runtime_s,
             },
         )

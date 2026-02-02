@@ -4,7 +4,6 @@ export type LiveSnapshot = {
   input_csv: string;
   output_csv: string;
   text_col: string;
-  id_col: string | null;
   model_name: string;
   batch_size: number;
   max_len: number;
@@ -13,6 +12,10 @@ export type LiveSnapshot = {
   rows_seen: number;
   processed: number;
   failed: number;
+  avg_score?: number;
+  positive?: number;
+  negative?: number;
+  neutral?: number;
   runtime_s: number;
 };
 
@@ -79,7 +82,7 @@ export async function fetchPredictions(path?: string, limit?: number): Promise<P
   if (path) {
     params.set("path", path);
   }
-  if (limit) {
+  if (limit !== undefined) {
     params.set("limit", String(limit));
   }
   const url = params.toString() ? `/api/predictions?${params.toString()}` : "/api/predictions";

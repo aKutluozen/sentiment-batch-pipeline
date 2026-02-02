@@ -8,7 +8,7 @@ make headless INPUT_CSV=data/Reviews.csv
 Common overrides
 - Enable metrics: `METRICS_PORT=8000 make headless`
 - Limit rows: `MAX_ROWS=10000 make headless`
-- Headerless CSV: `CSV_MODE=headerless TEXT_COL_INDEX=5 ID_COL_INDEX=1 make headless`
+- Headerless CSV: `CSV_MODE=headerless TEXT_COL_INDEX=5 make headless`
 
 2) Dashboard (UI + API in one container)
 ```

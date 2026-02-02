@@ -2,16 +2,28 @@ from __future__ import annotations
 
 from typing import Any, List, Dict
 
-from transformers import pipeline
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
 
 
 def load_sentiment_pipeline(model_name: str, max_len: int):
-    # truncation ensures very long texts do not crash tokenization
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+    safe_max_len = max_len
+    model_max = getattr(model.config, "max_position_embeddings", None)
+    if isinstance(model_max, int) and model_max > 0:
+        safe_max_len = min(safe_max_len, model_max)
+
+    tok_max = getattr(tokenizer, "model_max_length", None)
+    if isinstance(tok_max, int) and 0 < tok_max < 1_000_000:
+        safe_max_len = min(safe_max_len, tok_max)
+
     return pipeline(
         task="sentiment-analysis",
-        model=model_name,
+        model=model,
+        tokenizer=tokenizer,
         truncation=True,
-        max_length=max_len,
+        max_length=safe_max_len,
     )
 
 

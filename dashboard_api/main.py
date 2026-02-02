@@ -88,7 +88,7 @@ def _read_predictions(path: Path, limit: int) -> List[Dict[str, Any]]:
         reader = csv.DictReader(f)
         for row in reader:
             rows.append(row)
-            if len(rows) >= limit:
+            if limit > 0 and len(rows) >= limit:
                 break
     return rows
 
@@ -240,7 +240,6 @@ async def run_job(
     file: UploadFile = File(...),
     output_csv: Optional[str] = Form(default=None),
     text_col: Optional[str] = Form(default=None),
-    id_col: Optional[str] = Form(default=None),
     model_name: Optional[str] = Form(default=None),
     batch_size: Optional[int] = Form(default=None),
     max_len: Optional[int] = Form(default=None),
@@ -266,8 +265,6 @@ async def run_job(
         env["OUTPUT_CSV"] = output_csv
     if text_col:
         env["TEXT_COL"] = text_col
-    if id_col:
-        env["ID_COL"] = id_col
     if model_name:
         env["MODEL_NAME"] = model_name
     if batch_size is not None:
@@ -288,7 +285,6 @@ async def run_job(
             "input_csv": str(upload_path),
             "output_csv": resolved_output,
             "text_col": text_col or os.getenv("TEXT_COL", "Text"),
-            "id_col": id_col or None,
             "model_name": model_name or os.getenv("MODEL_NAME", ""),
             "batch_size": batch_size or int(os.getenv("BATCH_SIZE", "32")),
             "max_len": max_len or int(os.getenv("MAX_LEN", "256")),
@@ -297,6 +293,10 @@ async def run_job(
             "rows_seen": 0,
             "processed": 0,
             "failed": 0,
+            "avg_score": 0,
+            "positive": 0,
+            "negative": 0,
+            "neutral": 0,
             "runtime_s": 0,
         }
     )
@@ -335,7 +335,7 @@ async def run_job(
 @app.get("/api/predictions")
 def get_predictions(
     path: Optional[str] = Query(default=None),
-    limit: int = Query(default=200, ge=1, le=2000),
+    limit: int = Query(default=200, ge=0, le=10000),
 ) -> JSONResponse:
     target = Path(path) if path else Path(os.getenv("OUTPUT_CSV", "output/predictions.csv"))
     rows = _read_predictions(target, limit)

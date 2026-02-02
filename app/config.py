@@ -41,7 +41,6 @@ class Settings:
     run_history_path: Path
     run_live_path: Path
     text_col: str
-    id_col: str | None
     max_rows: int | None
     model_name: str
     batch_size: int
@@ -56,10 +55,6 @@ def load_settings() -> Settings:
     run_live_path = Path(_get_str("RUN_LIVE_PATH", "output/live_metrics.json"))
 
     text_col = _get_str("TEXT_COL", "Text")
-
-    # Optional: empty means "no id column"
-    id_col_raw = os.getenv("ID_COL", "").strip()
-    id_col = id_col_raw if id_col_raw else None
 
     model_name = _get_str(
         "MODEL_NAME",
@@ -88,7 +83,6 @@ def load_settings() -> Settings:
         run_history_path=run_history_path,
         run_live_path=run_live_path,
         text_col=text_col,
-        id_col=id_col,
         max_rows=max_rows,
         model_name=model_name,
         batch_size=batch_size,
