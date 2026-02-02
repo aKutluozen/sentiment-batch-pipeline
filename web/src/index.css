@@ -168,8 +168,39 @@ body {
   border: 1px solid rgba(60, 66, 130, 0.6);
 }
 
-.matrix-chart {
-  height: 280px;
+.heatmap {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  overflow-x: auto;
+}
+
+.heatmap-row {
+  display: grid;
+  grid-template-columns: repeat(var(--heatmap-cols), minmax(70px, 1fr));
+  gap: 6px;
+  align-items: center;
+}
+
+.heatmap-header {
+  font-weight: 600;
+  color: #c7ccff;
+}
+
+.heatmap-label {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(11, 13, 28, 0.6);
+  border: 1px solid rgba(60, 66, 130, 0.4);
+  text-align: center;
+}
+
+.heatmap-cell {
+  padding: 6px 8px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid rgba(60, 66, 130, 0.35);
+  color: #f2f4ff;
 }
 
 .table {

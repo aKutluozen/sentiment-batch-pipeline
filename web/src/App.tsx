@@ -11,7 +11,6 @@ import {
   Legend,
 } from "chart.js";
 import { Bar, Line, Scatter } from "react-chartjs-2";
-import { MatrixController, MatrixElement } from "chartjs-chart-matrix";
 import {
   cancelRun,
   fetchModels,
@@ -33,8 +32,6 @@ ChartJS.register(
   PointElement,
   LineElement,
   BarElement,
-  MatrixController,
-  MatrixElement,
   Title,
   Tooltip,
   Legend
@@ -58,6 +55,7 @@ export default function App() {
   const [summaryLimit, setSummaryLimit] = useState<"all" | number>(25);
   const [recentLimit, setRecentLimit] = useState<"all" | number>(25);
   const [predSort, setPredSort] = useState<"none" | "asc" | "desc">("none");
+  const [datasetFilter, setDatasetFilter] = useState("all");
   const [params, setParams] = useState({
     output_csv: "output/predictions.csv",
     text_col: "Text",
@@ -120,6 +118,29 @@ export default function App() {
   }, [live?.status, outputPath, summaryPath, predLimit]);
 
   useEffect(() => {
+    if (datasetFilter === "all") {
+      return;
+    }
+    const latestMatch = [...runs].reverse().find((run) => run.dataset_type === datasetFilter);
+    if (!latestMatch) {
+      setOutputPath(null);
+      setSummaryPath(null);
+      setPredictions([]);
+      setSummary(null);
+      return;
+    }
+    setOutputPath(latestMatch.output_csv);
+    const summaryCandidate = latestMatch.output_csv.replace(/\.csv$/i, "_group_summary.json");
+    setSummaryPath(summaryCandidate);
+    fetchPredictions(latestMatch.output_csv, predLimit === "all" ? 0 : predLimit)
+      .then(setPredictions)
+      .catch(() => undefined);
+    fetchSummary(summaryCandidate)
+      .then(setSummary)
+      .catch(() => undefined);
+  }, [datasetFilter, predLimit, runs]);
+
+  useEffect(() => {
     let active = true;
     const poll = async () => {
       try {
@@ -174,7 +195,19 @@ export default function App() {
     }
   }
 
-  const runIndex = useMemo(() => runs.map((_, i) => i + 1), [runs]);
+  const datasetOptions = useMemo(() => {
+    const values = Array.from(new Set(runs.map((run) => run.dataset_type).filter(Boolean))) as string[];
+    return ["all", ...values];
+  }, [runs]);
+
+  const filteredRuns = useMemo(() => {
+    if (datasetFilter === "all") {
+      return runs;
+    }
+    return runs.filter((run) => run.dataset_type === datasetFilter);
+  }, [datasetFilter, runs]);
+
+  const runIndex = useMemo(() => filteredRuns.map((_, i) => i + 1), [filteredRuns]);
 
   const runtimeData = useMemo(
     () => ({
@@ -182,14 +215,14 @@ export default function App() {
       datasets: [
         {
           label: "Runtime (s)",
-          data: runs.map((r) => r.runtime_s ?? 0),
+          data: filteredRuns.map((r) => r.runtime_s ?? 0),
           borderColor: "#60a5fa",
           backgroundColor: "rgba(96,165,250,0.3)",
           tension: 0.25,
         },
       ],
     }),
-    [runIndex, runs]
+    [runIndex, filteredRuns]
   );
 
   const processedData = useMemo(
@@ -198,21 +231,21 @@ export default function App() {
       datasets: [
         {
           label: "Processed",
-          data: runs.map((r) => r.processed ?? 0),
+          data: filteredRuns.map((r) => r.processed ?? 0),
           borderColor: "#34d399",
           backgroundColor: "rgba(52,211,153,0.3)",
           tension: 0.25,
         },
         {
           label: "Failed",
-          data: runs.map((r) => r.failed ?? 0),
+          data: filteredRuns.map((r) => r.failed ?? 0),
           borderColor: "#f87171",
           backgroundColor: "rgba(248,113,113,0.3)",
           tension: 0.25,
         },
       ],
     }),
-    [runIndex, runs]
+    [runIndex, filteredRuns]
   );
 
   const runChartOptions = useMemo(
@@ -222,14 +255,14 @@ export default function App() {
           callbacks: {
             afterBody: (items: { dataIndex: number }[]) => {
               const idx = items[0]?.dataIndex;
-              const run = typeof idx === "number" ? runs[idx] : undefined;
+              const run = typeof idx === "number" ? filteredRuns[idx] : undefined;
               return run ? `Max len: ${run.max_len}` : "";
             },
           },
         },
       },
     }),
-    [runs]
+    [filteredRuns]
   );
 
   const scoreDistributionData = useMemo(
@@ -238,25 +271,25 @@ export default function App() {
       datasets: [
         {
           label: "Positive",
-          data: runs.map((run) => run.positive ?? 0),
+          data: filteredRuns.map((run) => run.positive ?? 0),
           backgroundColor: "rgba(52, 211, 153, 0.6)",
           borderColor: "#34d399",
         },
         {
           label: "Negative",
-          data: runs.map((run) => run.negative ?? 0),
+          data: filteredRuns.map((run) => run.negative ?? 0),
           backgroundColor: "rgba(248, 113, 113, 0.6)",
           borderColor: "#f87171",
         },
         {
           label: "Neutral",
-          data: runs.map((run) => run.neutral ?? 0),
+          data: filteredRuns.map((run) => run.neutral ?? 0),
           backgroundColor: "rgba(148, 163, 184, 0.6)",
           borderColor: "#94a3b8",
         },
       ],
     }),
-    [runIndex, runs]
+    [runIndex, filteredRuns]
   );
 
   const scoreDistributionOptions = useMemo(
@@ -268,7 +301,7 @@ export default function App() {
           callbacks: {
             afterBody: (items: { dataIndex: number }[]) => {
               const idx = items[0]?.dataIndex;
-              const run = typeof idx === "number" ? runs[idx] : undefined;
+              const run = typeof idx === "number" ? filteredRuns[idx] : undefined;
               if (!run) {
                 return "";
               }
@@ -283,12 +316,12 @@ export default function App() {
         y: { stacked: true, title: { display: true, text: "Rows" } },
       },
     }),
-    [runs]
+    [filteredRuns]
   );
 
   const comparisonRuns = useMemo(() => {
-    return runs.filter((run) => run.runtime_s && run.runtime_s > 0);
-  }, [runs]);
+    return filteredRuns.filter((run) => run.runtime_s && run.runtime_s > 0);
+  }, [filteredRuns]);
 
   const batchSizes = useMemo(() => {
     const unique = Array.from(new Set(comparisonRuns.map((run) => run.batch_size))).sort(
@@ -385,94 +418,6 @@ export default function App() {
     return { min, max };
   }, [heatmapMatrix]);
 
-  const heatmapData = useMemo(() => {
-    const points: Array<{ x: number; y: number; v: number }> = [];
-    heatmapMatrix.forEach((row, rowIndex) => {
-      row.forEach((value, colIndex) => {
-        if (value === null) {
-          return;
-        }
-        points.push({ x: colIndex, y: rowIndex, v: value });
-      });
-    });
-    return {
-      datasets: [
-        {
-          label: "Throughput (rows/s)",
-          data: points,
-          width: ({ chart }) => (chart.chartArea?.width ?? 0) / Math.max(1, maxLens.length) - 6,
-          height: ({ chart }) => (chart.chartArea?.height ?? 0) / Math.max(1, batchSizes.length) - 6,
-          backgroundColor: (ctx: { raw?: { v: number } }) => {
-            const value = ctx.raw?.v ?? 0;
-            if (heatmapScale.max === heatmapScale.min) {
-              return "rgba(76, 109, 255, 0.35)";
-            }
-            const normalized = (value - heatmapScale.min) / (heatmapScale.max - heatmapScale.min);
-            const alpha = 0.15 + normalized * 0.85;
-            return `rgba(76, 109, 255, ${alpha})`;
-          },
-          borderWidth: 1,
-          borderColor: "rgba(60, 66, 130, 0.4)",
-        },
-      ],
-    };
-  }, [batchSizes.length, heatmapMatrix, heatmapScale, maxLens.length]);
-
-  const heatmapOptions = useMemo(
-    () => ({
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: (items: { raw?: { x: number; y: number } }[]) => {
-              const raw = items[0]?.raw;
-              if (!raw) {
-                return "";
-              }
-              const batch = batchSizes[raw.y] ?? "";
-              const maxLen = maxLens[raw.x] ?? "";
-              return `Batch ${batch}, Max len ${maxLen}`;
-            },
-            label: (ctx: { raw?: { v: number } }) => {
-              const value = ctx.raw?.v ?? 0;
-              return `Throughput: ${value.toFixed(2)} rows/s`;
-            },
-          },
-        },
-      },
-      scales: {
-        x: {
-          type: "linear" as const,
-          offset: true,
-          ticks: {
-            stepSize: 1,
-            callback: (value: number | string) => {
-              const idx = Number(value);
-              return Number.isFinite(idx) ? maxLens[idx] ?? "" : "";
-            },
-          },
-          title: { display: true, text: "Max length" },
-          grid: { display: false },
-        },
-        y: {
-          type: "linear" as const,
-          offset: true,
-          ticks: {
-            stepSize: 1,
-            callback: (value: number | string) => {
-              const idx = Number(value);
-              return Number.isFinite(idx) ? batchSizes[idx] ?? "" : "";
-            },
-          },
-          title: { display: true, text: "Batch size" },
-          grid: { display: false },
-        },
-      },
-    }),
-    [batchSizes, maxLens]
-  );
-
   const groupedScoreRows = useMemo(() => {
     const grouped = new Map<
       string,
@@ -488,7 +433,7 @@ export default function App() {
       }
     >();
 
-    runs.forEach((run) => {
+    filteredRuns.forEach((run) => {
       const key = `${run.batch_size}-${run.max_len}`;
       const entry = grouped.get(key) ?? {
         batch_size: run.batch_size,
@@ -516,7 +461,7 @@ export default function App() {
       }
       return a.max_len - b.max_len;
     });
-  }, [runs]);
+  }, [filteredRuns]);
 
   const summaryTotals = useMemo(() => {
     if (!summary) {
@@ -778,18 +723,27 @@ export default function App() {
       <section className="card">
         <div className="row">
           <h2>Run history</h2>
-          <div className="search">
-            <input
-              placeholder="Search by model, param, file..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
+          <div className="control-group">
+            <div className="search">
+              <input
+                placeholder="Search by model, param, file..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            <select value={datasetFilter} onChange={(e) => setDatasetFilter(e.target.value)}>
+              {datasetOptions.map((dataset) => (
+                <option key={dataset} value={dataset}>
+                  {dataset === "all" ? "All datasets" : dataset}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         {loading && <p className="muted">Loading runs...</p>}
         {error && <p className="error">{error}</p>}
-        {!loading && runs.length === 0 && <p className="muted">No run history yet.</p>}
-        {runs.length > 0 && (
+        {!loading && filteredRuns.length === 0 && <p className="muted">No run history yet.</p>}
+        {filteredRuns.length > 0 && (
           <div className="charts">
             <div className="chart">
               <Line data={runtimeData} options={runChartOptions} />
@@ -802,7 +756,12 @@ export default function App() {
       </section>
 
       <section className="card">
-        <h2>Run comparisons</h2>
+        <div className="row">
+          <h2>Run comparisons</h2>
+          <span className="mono">
+            {datasetFilter === "all" ? "All datasets" : datasetFilter}
+          </span>
+        </div>
         {comparisonRuns.length === 0 ? (
           <p className="muted">Run a few jobs to compare batch size vs max length.</p>
         ) : (
@@ -811,8 +770,44 @@ export default function App() {
               <Scatter data={scatterData} options={scatterOptions} />
             </div>
             <div className="chart">
-              <div className="matrix-chart">
-                <Bar data={heatmapData} options={heatmapOptions} />
+              <div className="heatmap" style={{ "--heatmap-cols": maxLens.length + 1 } as React.CSSProperties}>
+                <div className="heatmap-row heatmap-header">
+                  <span className="heatmap-label">Batch \ Max len</span>
+                  {maxLens.map((maxLen) => (
+                    <span key={`maxlen-${maxLen}`} className="heatmap-label">
+                      {maxLen}
+                    </span>
+                  ))}
+                </div>
+                {batchSizes.map((batchSize, rowIndex) => (
+                  <div className="heatmap-row" key={`batch-${batchSize}`}>
+                    <span className="heatmap-label">{batchSize}</span>
+                    {maxLens.map((maxLen, colIndex) => {
+                      const value = heatmapMatrix[rowIndex]?.[colIndex] ?? null;
+                      const normalized =
+                        value === null || heatmapScale.max === heatmapScale.min
+                          ? 0
+                          : (value - heatmapScale.min) / (heatmapScale.max - heatmapScale.min);
+                      const alpha = 0.15 + normalized * 0.85;
+                      return (
+                        <span
+                          key={`cell-${batchSize}-${maxLen}`}
+                          className="heatmap-cell"
+                          style={{
+                            background: value === null ? "rgba(255,255,255,0.04)" : `rgba(76, 109, 255, ${alpha})`,
+                          }}
+                          title={
+                            value === null
+                              ? "No runs"
+                              : `Throughput: ${value.toFixed(2)} rows/s`
+                          }
+                        >
+                          {value === null ? "—" : value.toFixed(1)}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
             <div className="chart">
@@ -879,7 +874,7 @@ export default function App() {
             <span>Failed</span>
             <span>Runtime (s)</span>
           </div>
-          {runs
+          {filteredRuns
             .slice()
             .reverse()
             .slice(0, recentLimit === "all" ? undefined : recentLimit)
@@ -902,6 +897,9 @@ export default function App() {
       <section className="card">
         <div className="row">
           <h2>Predictions (latest)</h2>
+          <span className="mono">
+            {datasetFilter === "all" ? "All datasets" : datasetFilter}
+          </span>
           <div className="control-group">
             <select
               value={predLimit}
@@ -983,6 +981,9 @@ export default function App() {
       <section className="card">
         <div className="row">
           <h2>Summary</h2>
+          <span className="mono">
+            {datasetFilter === "all" ? "All datasets" : datasetFilter}
+          </span>
           <select
             value={summaryLimit}
             onChange={(e) =>

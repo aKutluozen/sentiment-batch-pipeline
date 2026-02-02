@@ -9,6 +9,7 @@ export type LiveSnapshot = {
   max_len: number;
   max_rows: number | null;
   metrics_port: number | null;
+  dataset_type?: string;
   rows_seen: number;
   processed: number;
   failed: number;
