@@ -8,7 +8,7 @@ from typing import Dict, List
 
 from app.batch_runner import flush_batch
 from app.config import load_settings
-from app.csv_utils import build_output_headers, prepare_reader, resolve_columns
+from app.csv_utils import process_csv
 from app.helpers import (
     append_run_history,
     build_live_metrics_payload,
@@ -19,7 +19,7 @@ from app.inference import load_sentiment_pipeline, predict_batch
 from app.logging_utils import setup_logging
 from app.metrics import start_metrics_server
 from app.run_tracking import RunStats, write_live_metrics_safe
-from app.summary import dataset_name_from_path, infer_group_col, write_group_summary
+from app.summary import dataset_name_from_path, write_group_summary
 
 logger = logging.getLogger("batch_infer")
 
@@ -78,21 +78,21 @@ def main() -> int:
 
     # Stream rows instead of reading all into memory
     with s.input_csv.open("r", newline="", encoding="utf-8") as f_in:
-        prepared = prepare_reader(f_in, s.csv_mode)
-        if prepared is None:
+        # Process CSV
+        processed = process_csv(f_in, s)
+        if processed is None:
             return 2
-        reader, fieldnames, headerless_mode = prepared
-
-        headers = set(fieldnames)
-        resolved = resolve_columns(s, fieldnames, headerless_mode)
-        if resolved is None:
-            return 2
-        text_col, id_col = resolved
-
+        reader, fieldnames, text_col = processed
+        
+        # Prepare the output CSV
+        headers_list = list(fieldnames)
+        headers_set = set(fieldnames)
         dataset_type = dataset_name_from_path(s.input_csv)
-        group_col = infer_group_col(headers)
-
-        out_headers = build_output_headers(text_col, id_col)
+        if s.group_col_index is not None:
+            group_col = headers_list[s.group_col_index]
+        else:
+            group_col = None
+        out_headers = [text_col, "label", "score", "error"]
 
         with s.output_csv.open("w", newline="", encoding="utf-8") as f_out:
             writer = csv.DictWriter(f_out, fieldnames=out_headers)
@@ -118,8 +118,7 @@ def main() -> int:
                         s=s,
                         stats=stats,
                         text_col=text_col,
-                        id_col=id_col,
-                        headers=headers,
+                        headers=headers_set,
                         group_col=group_col,
                         group_stats=group_stats,
                         dataset_type=dataset_type,
@@ -145,8 +144,7 @@ def main() -> int:
                     s=s,
                     stats=stats,
                     text_col=text_col,
-                    id_col=id_col,
-                    headers=headers,
+                    headers=headers_set,
                     group_col=group_col,
                     group_stats=group_stats,
                     dataset_type=dataset_type,

@@ -87,6 +87,14 @@ export default function RunFormCard({
           )}
         </div>
         <label>
+          Group column index (optional)
+          <input
+            value={params.group_col_index}
+            onChange={(e) => setParams({ ...params, group_col_index: e.target.value })}
+            placeholder="e.g., 0"
+          />
+        </label>
+        <label>
           Model
           <select
             value={modelMode === "list" ? params.model_name : "__custom__"}

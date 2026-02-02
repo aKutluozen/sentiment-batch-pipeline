@@ -19,7 +19,6 @@ def flush_batch(
     s,
     stats: RunStats,
     text_col: str,
-    id_col: str | None,
     headers: set[str],
     group_col: str | None,
     group_stats: Dict[str, Dict[str, float]],
@@ -45,8 +44,6 @@ def flush_batch(
                 "score": "",
                 "error": str(e),
             }
-            if id_col:
-                out[id_col] = r.get(id_col, "")
             writer.writerow(out)
         stats.failed += len(batch_rows)
         metrics.inc_failed(len(batch_rows))
@@ -94,8 +91,6 @@ def flush_batch(
             "score": score,
             "error": "",
         }
-        if id_col:
-            out[id_col] = r.get(id_col, "")
         writer.writerow(out)
 
         if group_col and group_col in headers:

@@ -43,8 +43,7 @@ class Settings:
     csv_mode: str
     text_col: str
     text_col_index: int | None
-    id_col: str | None
-    id_col_index: int | None
+    group_col_index: int | None
     max_rows: int | None
     model_name: str
     batch_size: int
@@ -65,9 +64,8 @@ def load_settings() -> Settings:
     text_col = _get_str("TEXT_COL", "Text")
     text_col_index = _get_optional_int("TEXT_COL_INDEX")
 
-    id_col_raw = _get_str("ID_COL", "")
-    id_col = id_col_raw or None
-    id_col_index = _get_optional_int("ID_COL_INDEX")
+    group_col_index = _get_optional_int("GROUP_COL_INDEX")
+
 
     model_name = _get_str(
         "MODEL_NAME",
@@ -98,8 +96,7 @@ def load_settings() -> Settings:
         csv_mode=csv_mode,
         text_col=text_col,
         text_col_index=text_col_index,
-        id_col=id_col,
-        id_col_index=id_col_index,
+        group_col_index=group_col_index,
         max_rows=max_rows,
         model_name=model_name,
         batch_size=batch_size,

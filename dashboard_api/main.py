@@ -242,6 +242,7 @@ async def run_job(
     csv_mode: Optional[str] = Form(default=None),
     text_col: Optional[str] = Form(default=None),
     text_col_index: Optional[int] = Form(default=None),
+    group_col_index: Optional[int] = Form(default=None),
     model_name: Optional[str] = Form(default=None),
     batch_size: Optional[int] = Form(default=None),
     max_len: Optional[int] = Form(default=None),
@@ -272,6 +273,8 @@ async def run_job(
         env["TEXT_COL"] = text_col
     if text_col_index is not None:
         env["TEXT_COL_INDEX"] = str(text_col_index)
+    if group_col_index is not None:
+        env["GROUP_COL_INDEX"] = str(group_col_index)
     if model_name:
         env["MODEL_NAME"] = model_name
     if batch_size is not None:

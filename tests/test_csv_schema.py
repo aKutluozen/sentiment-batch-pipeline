@@ -69,3 +69,16 @@ def test_headerless_without_text_col_index_returns_2(
     main_mod = _stub_inference(monkeypatch)
     exit_code = main_mod.main()
     assert exit_code == 2
+
+def test_group_col_index_out_of_range(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    input_csv = tmp_path / "input.csv"
+    input_csv.write_text("Text,Category\nhello,a\n")
+
+    monkeypatch.setenv("INPUT_CSV", str(input_csv))
+    monkeypatch.setenv("GROUP_COL_INDEX", "2")
+
+    main_mod = _stub_inference(monkeypatch)
+    exit_code = main_mod.main()
+
+    assert exit_code == 2
