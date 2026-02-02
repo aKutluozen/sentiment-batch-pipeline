@@ -257,12 +257,13 @@ async def run_job(
     content = await file.read()
     upload_path.write_bytes(content)
 
+    resolved_output = output_csv or f"output/predictions_{timestamp}.csv"
+
     env = os.environ.copy()
     env["INPUT_CSV"] = str(upload_path)
     env["RUN_HISTORY_PATH"] = str(RUN_HISTORY_PATH)
     env["RUN_LIVE_PATH"] = str(RUN_LIVE_PATH)
-    if output_csv:
-        env["OUTPUT_CSV"] = output_csv
+    env["OUTPUT_CSV"] = resolved_output
     if text_col:
         env["TEXT_COL"] = text_col
     if model_name:
@@ -276,7 +277,6 @@ async def run_job(
     if metrics_port is not None:
         env["METRICS_PORT"] = str(metrics_port)
 
-    resolved_output = output_csv or os.getenv("OUTPUT_CSV", "output/predictions.csv")
     summary_path = _summary_path_for_output(resolved_output)
     _write_live_snapshot(
         {

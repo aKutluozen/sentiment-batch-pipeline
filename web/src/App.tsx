@@ -85,10 +85,13 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [predictions, setPredictions] = useState<Record<string, string>[]>([]);
-  const [summary, setSummary] = useState<GroupSummary | null>(null);
+  const [predictionsByDataset, setPredictionsByDataset] = useState<
+    Array<{ dataset: string; rows: Record<string, string>[] }>
+  >([]);
+  const [summariesByDataset, setSummariesByDataset] = useState<
+    Array<{ dataset: string; summary: GroupSummary | null }>
+  >([]);
   const [outputCsvPath, setOutputCsvPath] = useState(defaultParams.output_csv);
-  const [summaryPath, setSummaryPath] = useState<string | null>(null);
   const [recentLimit, setRecentLimit] = useState<"all" | number>(25);
   const [predLimit, setPredLimit] = useState<"all" | number>(25);
   const [predSort, setPredSort] = useState<"none" | "asc" | "desc">("none");
@@ -174,20 +177,78 @@ export default function App() {
     }
   }, [live?.output_csv]);
 
-  useEffect(() => {
-    const path = outputCsvPath || defaultParams.output_csv;
-    const summaryTarget = summaryPath ?? buildSummaryPath(path);
+  const latestRunsByDataset = useMemo(() => {
+    const byDataset = new Map<string, LiveSnapshot>();
+    runs.forEach((run) => {
+      const dataset = run.dataset_type ?? "unknown";
+      const existing = byDataset.get(dataset);
+      if (!existing) {
+        byDataset.set(dataset, run);
+        return;
+      }
+      const existingTs = new Date(existing.timestamp).getTime();
+      const currentTs = new Date(run.timestamp).getTime();
+      if (Number.isNaN(existingTs) || currentTs > existingTs) {
+        byDataset.set(dataset, run);
+      }
+    });
+    return Array.from(byDataset.entries()).map(([dataset, run]) => ({ dataset, run }));
+  }, [runs]);
 
-    fetchPredictions(path)
-      .then((rows) => setPredictions(rows))
-      .catch(() => setPredictions([]));
-
-    if (summaryTarget) {
-      fetchSummary(summaryTarget)
-        .then((data) => setSummary(data))
-        .catch(() => setSummary(null));
+  const datasetOutputs = useMemo(() => {
+    if (datasetFilter === "all") {
+      return latestRunsByDataset
+        .filter(({ run }) => Boolean(run.output_csv))
+        .map(({ dataset, run }) => ({ dataset, output_csv: run.output_csv }));
     }
-  }, [outputCsvPath, summaryPath]);
+    const match = latestRunsByDataset.find(({ dataset }) => dataset === datasetFilter);
+    if (match?.run.output_csv) {
+      return [{ dataset: datasetFilter, output_csv: match.run.output_csv }];
+    }
+    return [] as Array<{ dataset: string; output_csv: string }>;
+  }, [datasetFilter, latestRunsByDataset]);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      if (datasetOutputs.length === 0) {
+        if (active) {
+          setPredictionsByDataset([]);
+          setSummariesByDataset([]);
+        }
+        return;
+      }
+
+      const results = await Promise.all(
+        datasetOutputs.map(async ({ dataset, output_csv }) => {
+          const summaryTarget = buildSummaryPath(output_csv);
+          const [rows, summaryData] = await Promise.all([
+            fetchPredictions(output_csv).catch(() => []),
+            fetchSummary(summaryTarget).catch(() => null),
+          ]);
+          return { dataset, rows, summary: summaryData };
+        })
+      );
+
+      if (!active) {
+        return;
+      }
+      setPredictionsByDataset(results.map(({ dataset, rows }) => ({ dataset, rows })));
+      setSummariesByDataset(results.map(({ dataset, summary }) => ({ dataset, summary })));
+    };
+
+    load().catch(() => {
+      if (!active) {
+        return;
+      }
+      setPredictionsByDataset([]);
+      setSummariesByDataset([]);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [datasetOutputs]);
 
   useEffect(() => {
     if (!live) {
@@ -223,37 +284,6 @@ export default function App() {
     return runs.filter((run) => run.dataset_type === datasetFilter);
   }, [runs, datasetFilter]);
 
-  const predictionKeys = useMemo(() => {
-    if (predictions.length === 0) {
-      return [] as string[];
-    }
-    return Object.keys(predictions[0]);
-  }, [predictions]);
-
-  const predictionsToShow = useMemo(() => {
-    const rows = [...predictions];
-    if (predSort !== "none") {
-      rows.sort((a, b) => {
-        const aScore = Number(a.score ?? 0);
-        const bScore = Number(b.score ?? 0);
-        return predSort === "asc" ? aScore - bScore : bScore - aScore;
-      });
-    }
-    if (predLimit === "all") {
-      return rows;
-    }
-    return rows.slice(0, predLimit);
-  }, [predictions, predLimit, predSort]);
-
-  const summaryGroups = useMemo(() => {
-    if (!summary) {
-      return [] as GroupSummary["groups"];
-    }
-    if (summaryLimit === "all") {
-      return summary.groups;
-    }
-    return summary.groups.slice(0, summaryLimit);
-  }, [summary, summaryLimit]);
 
   const runtimeData: ChartData<"line"> = useMemo(() => {
     const labels = filteredRuns.map((run) => run.timestamp);
@@ -510,8 +540,9 @@ export default function App() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      if (params.output_csv.trim()) {
-        formData.append("output_csv", params.output_csv.trim());
+      const outputOverride = params.output_csv.trim();
+      if (outputOverride && outputOverride !== defaultParams.output_csv) {
+        formData.append("output_csv", outputOverride);
       }
       if (params.text_col.trim()) {
         formData.append("text_col", params.text_col.trim());
@@ -530,7 +561,6 @@ export default function App() {
 
       const response = await startRun(formData);
       setOutputCsvPath(response.output_csv);
-      setSummaryPath(response.summary_path ?? null);
       const status = await fetchRunStatus();
       setRunStatus(status);
     } catch (err) {
@@ -617,18 +647,15 @@ export default function App() {
         setPredLimit={setPredLimit}
         predSort={predSort}
         setPredSort={setPredSort}
-        predictions={predictions}
-        predictionKeys={predictionKeys}
-        predictionsToShow={predictionsToShow}
+        sections={predictionsByDataset}
         sentimentClass={sentimentClass}
       />
 
       <SummaryCard
         datasetFilter={datasetFilter}
-        summary={summary}
         summaryLimit={summaryLimit}
         setSummaryLimit={setSummaryLimit}
-        summaryGroups={summaryGroups}
+        sections={summariesByDataset}
       />
     </div>
   );

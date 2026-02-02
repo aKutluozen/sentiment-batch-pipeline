@@ -16,14 +16,14 @@ help:
 	@echo "  clean-artifacts Remove output artifacts (runs, logs, uploads)"
 	@echo "  clean-all      Clean docker + cache + artifacts"
 
-headless:
+run-headless:
 	@./run.sh
 
-full-service:
+run-full:
 	@docker build -f Dockerfile.dashboard -t iqrush-dashboard .
 	@docker run --rm -p 8001:8001 -v "$(PWD)/output":/app/output iqrush-dashboard
 
-run-example:
+run-example-headless:
 	@env \
 	INPUT_CSV=data/Reviews.csv \
 	BATCH_SIZE=128 MAX_ROWS=500 \

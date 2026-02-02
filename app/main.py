@@ -55,15 +55,22 @@ def _infer_headerless_fieldnames(first_row: List[str]) -> List[str]:
     return [f"col_{i}" for i in range(len(first_row))]
 
 
-def _detect_dataset(headers: set[str]) -> tuple[str, str | None]:
+def _dataset_name_from_path(path: Path) -> str:
+    stem = path.stem
+    if len(stem) >= 16 and stem[8:9] == "-" and stem[15:16] == "-":
+        stem = stem[16:]
+    return stem or "dataset"
+
+
+def _infer_group_col(headers: set[str]) -> str | None:
     if "ProductId" in headers:
-        return "amazon_reviews", "ProductId"
+        return "ProductId"
     if {"target", "text"}.issubset(headers):
         if "user" in headers:
-            return "sentiment140", "user"
+            return "user"
         if "date" in headers:
-            return "sentiment140", "date"
-    return "generic", None
+            return "date"
+    return None
 
 
 def _update_group_stats(
@@ -215,7 +222,8 @@ def main() -> int:
                     text_col = candidate
                     break
 
-        dataset_type, group_col = _detect_dataset(headers)
+        dataset_type = _dataset_name_from_path(s.input_csv)
+        group_col = _infer_group_col(headers)
 
         if text_col not in headers:
             logger.error("TEXT_COL not found in CSV headers", extra={"text_col": text_col, "headers": list(headers)})
