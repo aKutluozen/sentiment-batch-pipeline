@@ -42,7 +42,7 @@ ChartJS.register(
 );
 
 const defaultParams: RunParams = {
-  csv_mode: "auto",
+  csv_mode: "header",
   output_csv: "output/predictions.csv",
   text_col: "Text",
   text_col_index: "",

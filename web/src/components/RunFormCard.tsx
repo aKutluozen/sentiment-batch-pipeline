@@ -57,11 +57,10 @@ export default function RunFormCard({
               onChange={(e) =>
                 setParams({
                   ...params,
-                  csv_mode: e.target.value as "auto" | "header" | "headerless",
+                  csv_mode: e.target.value as "header" | "headerless",
                 })
               }
             >
-              <option value="auto">Auto</option>
               <option value="header">Header</option>
               <option value="headerless">Headerless</option>
             </select>

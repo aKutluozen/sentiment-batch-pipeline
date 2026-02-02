@@ -41,6 +41,7 @@ def prepare_reader(
         logger.error("CSV is empty")
         return None
 
+    # Some datasets (Sentiment140) have no header row.
     headerless_mode = False
     if csv_mode == "header":
         f_in.seek(0)
@@ -52,15 +53,8 @@ def prepare_reader(
         data_iter = itertools.chain([first_row], raw_reader)
         reader = ({name: value for name, value in zip(fieldnames, row)} for row in data_iter)
     else:
-        if is_header_row(first_row):
-            f_in.seek(0)
-            reader = csv.DictReader(f_in)
-            fieldnames = [cell.strip() for cell in (reader.fieldnames or [])]
-        else:
-            headerless_mode = True
-            fieldnames = infer_headerless_fieldnames(first_row)
-            data_iter = itertools.chain([first_row], raw_reader)
-            reader = ({name: value for name, value in zip(fieldnames, row)} for row in data_iter)
+        logger.error("CSV_MODE must be header or headerless", extra={"csv_mode": csv_mode})
+        return None
 
     return reader, fieldnames, headerless_mode
 

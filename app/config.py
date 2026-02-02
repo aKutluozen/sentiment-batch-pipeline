@@ -58,9 +58,9 @@ def load_settings() -> Settings:
     run_history_path = Path(_get_str("RUN_HISTORY_PATH", "output/run_history.jsonl"))
     run_live_path = Path(_get_str("RUN_LIVE_PATH", "output/live_metrics.json"))
 
-    csv_mode = _get_str("CSV_MODE", "auto").lower()
-    if csv_mode not in {"auto", "header", "headerless"}:
-        raise ValueError("CSV_MODE must be one of: auto, header, headerless")
+    csv_mode = _get_str("CSV_MODE", "header").lower()
+    if csv_mode not in {"header", "headerless"}:
+        raise ValueError("CSV_MODE must be one of: header, headerless")
 
     text_col = _get_str("TEXT_COL", "Text")
     text_col_index = _get_optional_int("TEXT_COL_INDEX")

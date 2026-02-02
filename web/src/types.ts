@@ -1,5 +1,5 @@
 export type RunParams = {
-  csv_mode: "auto" | "header" | "headerless";
+  csv_mode: "header" | "headerless";
   output_csv: string;
   text_col: string;
   text_col_index: string;
