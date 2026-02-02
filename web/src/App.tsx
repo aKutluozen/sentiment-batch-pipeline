@@ -41,6 +41,7 @@ export default function App() {
   const [outputPath, setOutputPath] = useState<string | null>(null);
   const [summaryPath, setSummaryPath] = useState<string | null>(null);
   const [summary, setSummary] = useState<GroupSummary | null>(null);
+  const [predLimit, setPredLimit] = useState(25);
   const [params, setParams] = useState({
     output_csv: "output/predictions.csv",
     text_col: "Text",
@@ -94,14 +95,14 @@ export default function App() {
   useEffect(() => {
     if (live?.status === "complete") {
       setRefreshKey((k) => k + 1);
-      fetchPredictions(outputPath ?? undefined)
+      fetchPredictions(outputPath ?? undefined, predLimit)
         .then(setPredictions)
         .catch(() => undefined);
       fetchSummary(summaryPath ?? undefined)
         .then(setSummary)
         .catch(() => undefined);
     }
-  }, [live?.status, outputPath, summaryPath]);
+  }, [live?.status, outputPath, summaryPath, predLimit]);
 
   useEffect(() => {
     let active = true;
@@ -478,13 +479,21 @@ export default function App() {
           <h2>Predictions (latest)</h2>
           <button
             onClick={() =>
-              fetchPredictions(outputPath ?? undefined)
+              fetchPredictions(outputPath ?? undefined, predLimit)
                 .then(setPredictions)
                 .catch(() => undefined)
             }
           >
             Refresh
           </button>
+          <select
+            value={predLimit}
+            onChange={(e) => setPredLimit(Number(e.target.value))}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={100}>100</option>
+          </select>
         </div>
         {predictions.length === 0 ? (
           <p className="muted">No predictions yet.</p>

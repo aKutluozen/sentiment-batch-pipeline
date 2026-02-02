@@ -19,7 +19,7 @@ help:
 headless:
 	@./run.sh
 
-dashboard:
+full-service:
 	@docker build -f Dockerfile.dashboard -t iqrush-dashboard .
 	@docker run --rm -p 8001:8001 -v "$(PWD)/output":/app/output iqrush-dashboard
 

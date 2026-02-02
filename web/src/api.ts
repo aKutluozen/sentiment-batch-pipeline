@@ -74,8 +74,15 @@ export async function startRun(formData: FormData): Promise<RunStartResponse> {
   return res.json();
 }
 
-export async function fetchPredictions(path?: string): Promise<PredictionRow[]> {
-  const url = path ? `/api/predictions?path=${encodeURIComponent(path)}` : "/api/predictions";
+export async function fetchPredictions(path?: string, limit?: number): Promise<PredictionRow[]> {
+  const params = new URLSearchParams();
+  if (path) {
+    params.set("path", path);
+  }
+  if (limit) {
+    params.set("limit", String(limit));
+  }
+  const url = params.toString() ? `/api/predictions?${params.toString()}` : "/api/predictions";
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error("Failed to fetch predictions");
