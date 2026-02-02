@@ -1,2 +1,19 @@
 *.zip
 *.csv
+
+# Node
+node_modules/
+web/node_modules/
+web/dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Outputs
+output/
+*.log
+
+# OS
+.DS_Store
