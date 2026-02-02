@@ -193,11 +193,13 @@ def main() -> int:
             return 2
 
         if _is_header_row(first_row):
-            fieldnames = [cell.strip() for cell in first_row]
-            data_iter = raw_reader
+            f_in.seek(0)
+            reader: Any = csv.DictReader(f_in)
+            fieldnames = [cell.strip() for cell in (reader.fieldnames or [])]
         else:
             fieldnames = _infer_headerless_fieldnames(first_row)
             data_iter = itertools.chain([first_row], raw_reader)
+            reader = ({name: value for name, value in zip(fieldnames, row)} for row in data_iter)
 
         headers = set(fieldnames)
         text_col = s.text_col
@@ -218,8 +220,6 @@ def main() -> int:
             return 2
         if id_col and id_col not in headers:
             id_col = None
-
-        reader = csv.DictReader(data_iter, fieldnames=fieldnames)
 
         out_headers: List[str] = []
         if id_col:

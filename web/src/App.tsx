@@ -304,7 +304,6 @@ export default function App() {
           <h2>Run logs</h2>
           <div className="log">
             <div className="row">
-              <strong>Run logs</strong>
               <span className="mono">{runStatus?.log_path ?? "no logs"}</span>
             </div>
             <pre>{runStatus?.log_tail || "No logs yet."}</pre>

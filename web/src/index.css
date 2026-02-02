@@ -266,6 +266,8 @@ button.secondary {
   background: rgba(11, 13, 28, 0.8);
   border: 1px solid rgba(60, 66, 130, 0.6);
   border-radius: 12px;
+  height: 95%;
+  overflow: auto;
 }
 
 .log pre {
@@ -273,6 +275,5 @@ button.secondary {
   font-size: 12px;
   color: #cbd5f5;
   max-height: 200px;
-  overflow: auto;
   white-space: pre-wrap;
 }

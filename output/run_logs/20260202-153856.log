@@ -1,0 +1,15 @@
+2026-02-02 15:38:59,664 INFO batch_infer Starting job
+2026-02-02 15:38:59,713 INFO batch_infer Loading model...
+2026-02-02 15:39:09,050 INFO batch_infer Model loaded
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/app/app/main.py", line 406, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/app/app/main.py", line 317, in main
+    for r in reader:
+  File "/usr/local/lib/python3.11/csv.py", line 111, in __next__
+    row = next(self.reader)
+          ^^^^^^^^^^^^^^^^^
+_csv.Error: iterator should return strings, not list (the file should be opened in text mode)
