@@ -17,18 +17,17 @@ from app.helpers import (
 )
 from app.inference import load_sentiment_pipeline, predict_batch
 from app.logging_utils import setup_logging
-from app.metrics import maybe_start_metrics_server
+from app.metrics import start_metrics_server
 from app.run_tracking import RunStats, write_live_metrics_safe
 from app.summary import dataset_name_from_path, infer_group_col, write_group_summary
 
 logger = logging.getLogger("batch_infer")
 
 
-
 def main() -> int:
     setup_logging()
-    s = load_settings()
-    metrics = maybe_start_metrics_server(s.metrics_port)
+    s = load_settings() # Load config from env vars safely
+    metrics = start_metrics_server(s.metrics_port)
 
     logger.info(
         "Starting job",
@@ -45,15 +44,17 @@ def main() -> int:
         },
     )
 
+    # File safety first.
     if not s.input_csv.exists():
         logger.error("INPUT_CSV not found", extra={"path": str(s.input_csv)})
-        return 2
-
+        return 2  # Config error - used for CI
     ensure_parent_dir(s.output_csv)
 
+    # Initialize run tracking
     start = time.time()
     stats = RunStats()
-    group_stats: Dict[str, Dict[str, float]] = {}
+    group_stats: Dict[str, Dict[str, float]] = {} # In case of group summaries
+    
     write_live_metrics_safe(
         s.run_live_path,
         build_live_metrics_payload(

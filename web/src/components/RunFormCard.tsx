@@ -49,13 +49,44 @@ export default function RunFormCard({
             onChange={(e) => setParams({ ...params, output_csv: e.target.value })}
           />
         </label>
-        <label>
-          Text column
-          <input
-            value={params.text_col}
-            onChange={(e) => setParams({ ...params, text_col: e.target.value })}
-          />
-        </label>
+        <div className="form-row">
+          <label>
+            CSV mode
+            <select
+              value={params.csv_mode}
+              onChange={(e) =>
+                setParams({
+                  ...params,
+                  csv_mode: e.target.value as "auto" | "header" | "headerless",
+                })
+              }
+            >
+              <option value="auto">Auto</option>
+              <option value="header">Header</option>
+              <option value="headerless">Headerless</option>
+            </select>
+          </label>
+          {params.csv_mode === "headerless" ? (
+            <label>
+              Column index (0-based)
+              <input
+                type="number"
+                value={params.text_col_index}
+                onChange={(e) =>
+                  setParams({ ...params, text_col_index: e.target.value })
+                }
+              />
+            </label>
+          ) : (
+            <label>
+              Text column
+              <input
+                value={params.text_col}
+                onChange={(e) => setParams({ ...params, text_col: e.target.value })}
+              />
+            </label>
+          )}
+        </div>
         <label>
           Model
           <select

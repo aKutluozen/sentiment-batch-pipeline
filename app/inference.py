@@ -9,6 +9,7 @@ def load_sentiment_pipeline(model_name: str, max_len: int):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSequenceClassification.from_pretrained(model_name)
 
+    # Protect against very long inputs that exceed model/tokenizer limits
     safe_max_len = max_len
     model_max = getattr(model.config, "max_position_embeddings", None)
     if isinstance(model_max, int) and model_max > 0:
@@ -28,5 +29,4 @@ def load_sentiment_pipeline(model_name: str, max_len: int):
 
 
 def predict_batch(nlp, texts: List[str]) -> List[Dict[str, Any]]:
-    # HF pipeline supports batching by passing a list
     return nlp(texts)

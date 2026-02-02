@@ -81,8 +81,18 @@ def resolve_columns(
             return None
         text_col = fieldnames[s.text_col_index]
     elif headerless_mode:
-        logger.error("Headerless CSV requires TEXT_COL_INDEX")
-        return None
+        if len(fieldnames) == 1:
+            logger.warning(
+                "Headerless CSV missing TEXT_COL_INDEX; defaulting to column 0",
+                extra={"field_count": len(fieldnames)},
+            )
+            text_col = fieldnames[0]
+        else:
+            logger.error(
+                "Headerless CSV requires TEXT_COL_INDEX (0-based). Example: CSV_MODE=headerless TEXT_COL_INDEX=5",
+                extra={"field_count": len(fieldnames)},
+            )
+            return None
 
     if not headerless_mode and text_col not in headers:
         for candidate in ["text", "Text", "review_text", "review", "content"]:

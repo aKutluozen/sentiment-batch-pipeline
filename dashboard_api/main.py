@@ -239,7 +239,9 @@ async def live_stream() -> StreamingResponse:
 async def run_job(
     file: UploadFile = File(...),
     output_csv: Optional[str] = Form(default=None),
+    csv_mode: Optional[str] = Form(default=None),
     text_col: Optional[str] = Form(default=None),
+    text_col_index: Optional[int] = Form(default=None),
     model_name: Optional[str] = Form(default=None),
     batch_size: Optional[int] = Form(default=None),
     max_len: Optional[int] = Form(default=None),
@@ -264,8 +266,12 @@ async def run_job(
     env["RUN_HISTORY_PATH"] = str(RUN_HISTORY_PATH)
     env["RUN_LIVE_PATH"] = str(RUN_LIVE_PATH)
     env["OUTPUT_CSV"] = resolved_output
+    if csv_mode:
+        env["CSV_MODE"] = csv_mode
     if text_col:
         env["TEXT_COL"] = text_col
+    if text_col_index is not None:
+        env["TEXT_COL_INDEX"] = str(text_col_index)
     if model_name:
         env["MODEL_NAME"] = model_name
     if batch_size is not None:

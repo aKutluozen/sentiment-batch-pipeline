@@ -5,6 +5,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict
 
+from app.config import Settings
+
 
 def ensure_parent_dir(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -23,7 +25,7 @@ def write_live_metrics(path: Path, record: Dict[str, Any]) -> None:
 
 
 def build_live_metrics_payload(
-    s,
+    s: Settings,
     status: str,
     text_col: str,
     rows_seen: int,
@@ -65,7 +67,7 @@ def build_live_metrics_payload(
 
 
 def build_run_history_payload(
-    s,
+    s: Settings,
     text_col: str,
     rows_seen: int,
     processed: int,

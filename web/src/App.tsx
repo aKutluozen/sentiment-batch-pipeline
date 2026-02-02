@@ -12,20 +12,7 @@ import {
   Title,
   Tooltip,
 } from "chart.js";
-import {
-  cancelRun,
-  fetchModels,
-  fetchPredictions,
-  fetchRunStatus,
-  fetchRuns,
-  fetchSummary,
-  GroupSummary,
-  LiveSnapshot,
-  ModelInfo,
-  RunStatus,
-  startRun,
-  subscribeLive,
-} from "./api";
+import { cancelRun, startRun } from "./api";
 import HeaderBar from "./components/HeaderBar";
 import DatasetFilterCard from "./components/DatasetFilterCard";
 import PredictionsCard from "./components/PredictionsCard";
@@ -35,7 +22,13 @@ import RunFormCard from "./components/RunFormCard";
 import RunHistoryCard from "./components/RunHistoryCard";
 import RunLogsCard from "./components/RunLogsCard";
 import SummaryCard from "./components/SummaryCard";
+import { useLive } from "./hooks/useLive";
+import { useModels } from "./hooks/useModels";
+import { usePredictionsSummaries } from "./hooks/usePredictionsSummaries";
+import { useRunStatus } from "./hooks/useRunStatus";
+import { useRuns } from "./hooks/useRuns";
 import { GroupedScoreRow, RunParams } from "./types";
+import { formatShortTimestamp, sentimentClass } from "./utils/appUtils";
 
 ChartJS.register(
   CategoryScale,
@@ -49,8 +42,10 @@ ChartJS.register(
 );
 
 const defaultParams: RunParams = {
+  csv_mode: "auto",
   output_csv: "output/predictions.csv",
   text_col: "Text",
+  text_col_index: "",
   model_name: "distilbert-base-uncased-finetuned-sst-2-english",
   batch_size: 32,
   max_len: 256,
@@ -61,36 +56,13 @@ const defaultParams: RunParams = {
 const chartTextColor = "#9aa1d8";
 const chartGridColor = "rgba(60, 66, 130, 0.25)";
 
-const buildSummaryPath = (outputCsv: string) => {
-  if (!outputCsv) {
-    return "";
-  }
-  const dotIndex = outputCsv.lastIndexOf(".");
-  if (dotIndex === -1) {
-    return `${outputCsv}_group_summary.json`;
-  }
-  return `${outputCsv.slice(0, dotIndex)}_group_summary.json`;
-};
-
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [params, setParams] = useState<RunParams>(defaultParams);
   const [modelMode, setModelMode] = useState<"list" | "custom">("list");
-  const [models, setModels] = useState<ModelInfo[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [formBusy, setFormBusy] = useState(false);
-  const [runStatus, setRunStatus] = useState<RunStatus | null>(null);
-  const [live, setLive] = useState<LiveSnapshot | null>(null);
-  const [runs, setRuns] = useState<LiveSnapshot[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [predictionsByDataset, setPredictionsByDataset] = useState<
-    Array<{ dataset: string; rows: Record<string, string>[] }>
-  >([]);
-  const [summariesByDataset, setSummariesByDataset] = useState<
-    Array<{ dataset: string; summary: GroupSummary | null }>
-  >([]);
   const [outputCsvPath, setOutputCsvPath] = useState(defaultParams.output_csv);
   const [recentLimit, setRecentLimit] = useState<"all" | number>(25);
   const [predLimit, setPredLimit] = useState<"all" | number>(25);
@@ -98,78 +70,10 @@ export default function App() {
   const [summaryLimit, setSummaryLimit] = useState<"all" | number>(10);
   const [datasetFilter, setDatasetFilter] = useState("all");
 
-  useEffect(() => {
-    let active = true;
-    fetchModels()
-      .then((data) => {
-        if (!active) {
-          return;
-        }
-        setModels(data);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
-    fetchRuns(query)
-      .then((data) => {
-        if (!active) {
-          return;
-        }
-        setRuns(data);
-      })
-      .catch((err: unknown) => {
-        if (!active) {
-          return;
-        }
-        setError(err instanceof Error ? err.message : "Failed to fetch runs");
-      })
-      .finally(() => {
-        if (!active) {
-          return;
-        }
-        setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [query]);
-
-  useEffect(() => {
-    const source = subscribeLive((next) => {
-      setLive(next);
-    });
-    return () => {
-      source.close();
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    const updateStatus = () => {
-      fetchRunStatus()
-        .then((status) => {
-          if (!active) {
-            return;
-          }
-          setRunStatus(status);
-        })
-        .catch(() => undefined);
-    };
-    updateStatus();
-    const interval = setInterval(updateStatus, 2000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, []);
+  const models = useModels();
+  const live = useLive();
+  const { runStatus, refresh: refreshRunStatus } = useRunStatus();
+  const { runs, loading, error, refresh } = useRuns(query);
 
   useEffect(() => {
     if (live?.output_csv) {
@@ -208,56 +112,14 @@ export default function App() {
     return [] as Array<{ dataset: string; output_csv: string }>;
   }, [datasetFilter, latestRunsByDataset]);
 
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      if (datasetOutputs.length === 0) {
-        if (active) {
-          setPredictionsByDataset([]);
-          setSummariesByDataset([]);
-        }
-        return;
-      }
-
-      const results = await Promise.all(
-        datasetOutputs.map(async ({ dataset, output_csv }) => {
-          const summaryTarget = buildSummaryPath(output_csv);
-          const [rows, summaryData] = await Promise.all([
-            fetchPredictions(output_csv).catch(() => []),
-            fetchSummary(summaryTarget).catch(() => null),
-          ]);
-          return { dataset, rows, summary: summaryData };
-        })
-      );
-
-      if (!active) {
-        return;
-      }
-      setPredictionsByDataset(results.map(({ dataset, rows }) => ({ dataset, rows })));
-      setSummariesByDataset(results.map(({ dataset, summary }) => ({ dataset, summary })));
-    };
-
-    load().catch(() => {
-      if (!active) {
-        return;
-      }
-      setPredictionsByDataset([]);
-      setSummariesByDataset([]);
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [datasetOutputs]);
+  const { predictionsByDataset, summariesByDataset } = usePredictionsSummaries(datasetOutputs);
 
   useEffect(() => {
     if (!live) {
       return;
     }
     if (live.status === "complete" || live.status === "failed" || live.status === "cancelled") {
-      fetchRuns(query)
-        .then((data) => setRuns(data))
-        .catch(() => undefined);
+      refresh();
     }
   }, [live, query]);
 
@@ -518,16 +380,6 @@ export default function App() {
     []
   );
 
-  const sentimentClass = (labelValue: string) => {
-    const value = labelValue.toLowerCase();
-    if (value.includes("pos")) {
-      return "text-positive";
-    }
-    if (value.includes("neg")) {
-      return "text-negative";
-    }
-    return "text-average";
-  };
 
   const handleRunSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -544,7 +396,12 @@ export default function App() {
       if (outputOverride && outputOverride !== defaultParams.output_csv) {
         formData.append("output_csv", outputOverride);
       }
-      if (params.text_col.trim()) {
+      formData.append("csv_mode", params.csv_mode);
+      if (params.csv_mode === "headerless") {
+        if (params.text_col_index.trim()) {
+          formData.append("text_col_index", params.text_col_index.trim());
+        }
+      } else if (params.text_col.trim()) {
         formData.append("text_col", params.text_col.trim());
       }
       if (params.model_name.trim()) {
@@ -561,8 +418,7 @@ export default function App() {
 
       const response = await startRun(formData);
       setOutputCsvPath(response.output_csv);
-      const status = await fetchRunStatus();
-      setRunStatus(status);
+      await refreshRunStatus();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Failed to start run");
     } finally {
@@ -570,18 +426,6 @@ export default function App() {
     }
   };
 
-  const formatShortTimestamp = (timestamp: string) => {
-    const parsed = new Date(timestamp);
-    if (Number.isNaN(parsed.getTime())) {
-      return timestamp;
-    }
-    const ss = String(parsed.getSeconds()).padStart(2, "0");
-    const mm = String(parsed.getMinutes()).padStart(2, "0");
-    const hh = String(parsed.getHours()).padStart(2, "0");
-    const dd = String(parsed.getDate()).padStart(2, "0");
-    const yy = String(parsed.getFullYear()).slice(-2);
-    return `${ss}/${mm}/${hh}-${dd}/${yy}`;
-  };
 
   return (
     <div className="page">

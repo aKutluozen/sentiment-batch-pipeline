@@ -29,7 +29,7 @@ class Metrics:
         job_duration_hist.observe(seconds)
 
 
-def maybe_start_metrics_server(port: int | None) -> Metrics:
+def start_metrics_server(port: int | None) -> Metrics:
     if port is not None:
         start_http_server(port)
     return Metrics()
