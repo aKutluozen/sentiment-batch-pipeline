@@ -15,6 +15,8 @@ import {
   fetchPredictions,
   fetchRunStatus,
   fetchRuns,
+  fetchSummary,
+  GroupSummary,
   LiveSnapshot,
   RunStatus,
   startRun,
@@ -35,6 +37,8 @@ export default function App() {
   const [formBusy, setFormBusy] = useState(false);
   const [predictions, setPredictions] = useState<Record<string, string>[]>([]);
   const [outputPath, setOutputPath] = useState<string | null>(null);
+  const [summaryPath, setSummaryPath] = useState<string | null>(null);
+  const [summary, setSummary] = useState<GroupSummary | null>(null);
   const [params, setParams] = useState({
     output_csv: "output/predictions.csv",
     text_col: "Text",
@@ -83,8 +87,11 @@ export default function App() {
       fetchPredictions(outputPath ?? undefined)
         .then(setPredictions)
         .catch(() => undefined);
+      fetchSummary(summaryPath ?? undefined)
+        .then(setSummary)
+        .catch(() => undefined);
     }
-  }, [live?.status, outputPath]);
+  }, [live?.status, outputPath, summaryPath]);
 
   useEffect(() => {
     let active = true;
@@ -136,6 +143,7 @@ export default function App() {
     try {
       const response = await startRun(formData);
       setOutputPath(response.output_csv);
+      setSummaryPath(response.summary_path ?? null);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Failed to start run");
     } finally {
@@ -392,6 +400,42 @@ export default function App() {
               </div>
             ))}
         </div>
+      </section>
+
+      <section className="card">
+        <div className="row">
+          <h2>Grouped summary</h2>
+          <button
+            onClick={() =>
+              fetchSummary(summaryPath ?? undefined)
+                .then(setSummary)
+                .catch(() => undefined)
+            }
+          >
+            Refresh
+          </button>
+        </div>
+        {!summary && <p className="muted">No summary available yet.</p>}
+        {summary && (
+          <div className="table">
+            <div className="row header">
+              <span>Group</span>
+              <span>Total</span>
+              <span>Positive</span>
+              <span>Negative</span>
+              <span>Avg score</span>
+            </div>
+            {summary.groups.slice(0, 25).map((group) => (
+              <div className="row" key={group.group}>
+                <span className="mono">{group.group}</span>
+                <span>{group.total}</span>
+                <span>{group.positive}</span>
+                <span>{group.negative}</span>
+                <span>{group.avg_score}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="card">

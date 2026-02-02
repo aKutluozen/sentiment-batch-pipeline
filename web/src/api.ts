@@ -22,10 +22,23 @@ export type RunStartResponse = {
   status: string;
   input_csv: string;
   output_csv: string;
+  summary_path?: string;
   pid: number;
 };
 
 export type PredictionRow = Record<string, string>;
+
+export type GroupSummary = {
+  dataset_type: string;
+  group_col: string | null;
+  groups: Array<{
+    group: string;
+    total: number;
+    positive: number;
+    negative: number;
+    avg_score: number;
+  }>;
+};
 
 export type RunStatus = {
   running: boolean;
@@ -63,6 +76,16 @@ export async function fetchPredictions(path?: string): Promise<PredictionRow[]> 
   }
   const data = await res.json();
   return data.rows ?? [];
+}
+
+export async function fetchSummary(path?: string): Promise<GroupSummary | null> {
+  const url = path ? `/api/summary?path=${encodeURIComponent(path)}` : "/api/summary";
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error("Failed to fetch summary");
+  }
+  const data = await res.json();
+  return data.summary ?? null;
 }
 
 export async function fetchRunStatus(): Promise<RunStatus> {

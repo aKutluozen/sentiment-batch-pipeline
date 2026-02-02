@@ -81,6 +81,20 @@ def _read_predictions(path: Path, limit: int) -> List[Dict[str, Any]]:
     return rows
 
 
+def _read_summary(path: Path) -> Dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+
+
+def _summary_path_for_output(output_csv: str) -> Path:
+    output_path = Path(output_csv)
+    return output_path.with_name(f"{output_path.stem}_group_summary.json")
+
+
 def _is_running() -> bool:
     global _current_process
     if _current_process is None:
@@ -213,6 +227,7 @@ async def run_job(
         env["METRICS_PORT"] = str(metrics_port)
 
     resolved_output = output_csv or os.getenv("OUTPUT_CSV", "output/predictions.csv")
+    summary_path = _summary_path_for_output(resolved_output)
     _write_live_snapshot(
         {
             "status": "starting",
@@ -258,6 +273,7 @@ async def run_job(
             "input_csv": str(upload_path),
             "output_csv": resolved_output,
             "pid": _current_process.pid,
+            "summary_path": str(summary_path),
             "log_path": str(log_path),
         }
     )
@@ -271,6 +287,15 @@ def get_predictions(
     target = Path(path) if path else Path(os.getenv("OUTPUT_CSV", "output/predictions.csv"))
     rows = _read_predictions(target, limit)
     return JSONResponse({"count": len(rows), "rows": rows, "path": str(target)})
+
+
+@app.get("/api/summary")
+def get_summary(
+    path: Optional[str] = Query(default=None),
+) -> JSONResponse:
+    target = Path(path) if path else _summary_path_for_output(os.getenv("OUTPUT_CSV", "output/predictions.csv"))
+    summary = _read_summary(target)
+    return JSONResponse({"summary": summary, "path": str(target)})
 
 
 @app.get("/api/run/status")

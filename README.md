@@ -20,6 +20,7 @@ Dashboard features
 - Upload a CSV, tune params, run from the UI
 - Live progress, history charts, searchable runs
 - Predictions table
+- Grouped summary by detected dataset type (e.g., ProductId or user)
 
 Extras
 - Generate plots: `make visualize`

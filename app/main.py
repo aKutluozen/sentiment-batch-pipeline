@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import itertools
 import json
 import logging
 import time
@@ -29,6 +30,98 @@ def _write_live_metrics(path: Path, record: Dict[str, Any]) -> None:
     _ensure_parent_dir(path)
     with path.open("w", encoding="utf-8") as f:
         json.dump(record, f, ensure_ascii=False)
+
+
+def _is_header_row(row: List[str]) -> bool:
+    header_markers = {
+        "text",
+        "summary",
+        "productid",
+        "userid",
+        "score",
+        "target",
+        "ids",
+        "date",
+        "flag",
+        "user",
+    }
+    normalized = {cell.strip().lower() for cell in row}
+    return len(normalized & header_markers) > 0
+
+
+def _infer_headerless_fieldnames(first_row: List[str]) -> List[str]:
+    if len(first_row) == 6:
+        return ["target", "ids", "date", "flag", "user", "text"]
+    return [f"col_{i}" for i in range(len(first_row))]
+
+
+def _detect_dataset(headers: set[str]) -> tuple[str, str | None]:
+    if "ProductId" in headers:
+        return "amazon_reviews", "ProductId"
+    if {"target", "text"}.issubset(headers):
+        if "user" in headers:
+            return "sentiment140", "user"
+        if "date" in headers:
+            return "sentiment140", "date"
+    return "generic", None
+
+
+def _update_group_stats(
+    stats: Dict[str, Dict[str, float]],
+    group_value: str,
+    label: str,
+    score: float,
+) -> None:
+    entry = stats.setdefault(
+        group_value,
+        {"total": 0.0, "positive": 0.0, "negative": 0.0, "score_sum": 0.0},
+    )
+    entry["total"] += 1
+    label_norm = (label or "").lower()
+    if "pos" in label_norm:
+        entry["positive"] += 1
+    elif "neg" in label_norm:
+        entry["negative"] += 1
+    entry["score_sum"] += score
+
+
+def _write_group_summary(
+    json_path: Path,
+    csv_path: Path,
+    dataset_type: str,
+    group_col: str | None,
+    stats: Dict[str, Dict[str, float]],
+) -> None:
+    if not stats:
+        return
+    groups: List[Dict[str, Any]] = []
+    for group, values in stats.items():
+        total = int(values["total"])
+        avg_score = (values["score_sum"] / values["total"]) if values["total"] else 0.0
+        groups.append(
+            {
+                "group": group,
+                "total": total,
+                "positive": int(values["positive"]),
+                "negative": int(values["negative"]),
+                "avg_score": round(avg_score, 6),
+            }
+        )
+    groups.sort(key=lambda item: item["total"], reverse=True)
+    _ensure_parent_dir(json_path)
+    with json_path.open("w", encoding="utf-8") as f_json:
+        json.dump(
+            {"dataset_type": dataset_type, "group_col": group_col, "groups": groups},
+            f_json,
+            ensure_ascii=False,
+            indent=2,
+        )
+    with csv_path.open("w", encoding="utf-8", newline="") as f_csv:
+        writer = csv.DictWriter(
+            f_csv, fieldnames=["group", "total", "positive", "negative", "avg_score"]
+        )
+        writer.writeheader()
+        writer.writerows(groups)
 
 
 def main() -> int:
@@ -62,6 +155,7 @@ def main() -> int:
     processed = 0
     failed = 0
     rows_seen = 0
+    group_stats: Dict[str, Dict[str, float]] = {}
     try:
         _write_live_metrics(
             s.run_live_path,
@@ -92,23 +186,45 @@ def main() -> int:
 
     # Stream rows instead of reading all into memory
     with s.input_csv.open("r", newline="", encoding="utf-8") as f_in:
-        reader = csv.DictReader(f_in)
-        if reader.fieldnames is None:
-            logger.error("CSV has no header row")
+        raw_reader = csv.reader(f_in)
+        first_row = next(raw_reader, None)
+        if first_row is None:
+            logger.error("CSV is empty")
             return 2
 
-        headers = set(reader.fieldnames)
-        if s.text_col not in headers:
-            logger.error("TEXT_COL not found in CSV headers", extra={"text_col": s.text_col, "headers": list(headers)})
+        if _is_header_row(first_row):
+            fieldnames = [cell.strip() for cell in first_row]
+            data_iter = raw_reader
+        else:
+            fieldnames = _infer_headerless_fieldnames(first_row)
+            data_iter = itertools.chain([first_row], raw_reader)
+
+        headers = set(fieldnames)
+        text_col = s.text_col
+        if text_col not in headers:
+            for candidate in ["text", "Text", "review_text", "review", "content"]:
+                if candidate in headers:
+                    text_col = candidate
+                    break
+
+        dataset_type, group_col = _detect_dataset(headers)
+        id_col = s.id_col if s.id_col else group_col
+
+        if text_col not in headers:
+            logger.error("TEXT_COL not found in CSV headers", extra={"text_col": text_col, "headers": list(headers)})
             return 2
         if s.id_col and s.id_col not in headers:
             logger.error("ID_COL not found in CSV headers", extra={"id_col": s.id_col, "headers": list(headers)})
             return 2
+        if id_col and id_col not in headers:
+            id_col = None
+
+        reader = csv.DictReader(data_iter, fieldnames=fieldnames)
 
         out_headers: List[str] = []
-        if s.id_col:
-            out_headers.append(s.id_col)
-        out_headers += [s.text_col, "label", "score", "error"]
+        if id_col:
+            out_headers.append(id_col)
+        out_headers += [text_col, "label", "score", "error"]
 
         with s.output_csv.open("w", newline="", encoding="utf-8") as f_out:
             writer = csv.DictWriter(f_out, fieldnames=out_headers)
@@ -121,7 +237,7 @@ def main() -> int:
 
                 texts: List[str] = []
                 for r in batch_rows:
-                    t = (r.get(s.text_col) or "").strip()
+                    t = (r.get(text_col) or "").strip()
                     texts.append(t)
 
                 batch_start = time.time()
@@ -134,13 +250,13 @@ def main() -> int:
                     logger.exception("Batch inference failed", extra={"batch_size": len(batch_rows)})
                     for r in batch_rows:
                         out: Dict[str, Any] = {
-                            s.text_col: r.get(s.text_col, ""),
+                            text_col: r.get(text_col, ""),
                             "label": "",
                             "score": "",
                             "error": str(e),
                         }
-                        if s.id_col:
-                            out[s.id_col] = r.get(s.id_col, "")
+                        if id_col:
+                            out[id_col] = r.get(id_col, "")
                         writer.writerow(out)
                     failed += len(batch_rows)
                     metrics.inc_failed(len(batch_rows))
@@ -157,13 +273,15 @@ def main() -> int:
                                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                                 "input_csv": str(s.input_csv),
                                 "output_csv": str(s.output_csv),
-                                "text_col": s.text_col,
-                                "id_col": s.id_col,
+                                "text_col": text_col,
+                                "id_col": id_col,
                                 "model_name": s.model_name,
                                 "batch_size": s.batch_size,
                                 "max_len": s.max_len,
                                 "max_rows": s.max_rows,
                                 "metrics_port": s.metrics_port,
+                                "dataset_type": dataset_type,
+                                "group_col": group_col,
                                 "rows_seen": rows_seen,
                                 "processed": processed,
                                 "failed": failed,
@@ -174,15 +292,25 @@ def main() -> int:
                         logger.exception("Failed to write live metrics", extra={"run_live_path": str(s.run_live_path)})
 
                 for r, pred in zip(batch_rows, preds):
+                    label = pred.get("label", "")
+                    score = pred.get("score", "")
                     out = {
-                        s.text_col: r.get(s.text_col, ""),
-                        "label": pred.get("label", ""),
-                        "score": pred.get("score", ""),
+                        text_col: r.get(text_col, ""),
+                        "label": label,
+                        "score": score,
                         "error": "",
                     }
-                    if s.id_col:
-                        out[s.id_col] = r.get(s.id_col, "")
+                    if id_col:
+                        out[id_col] = r.get(id_col, "")
                     writer.writerow(out)
+
+                    if group_col and group_col in headers:
+                        group_value = (r.get(group_col) or "").strip() or "(unknown)"
+                        try:
+                            score_val = float(score)
+                        except (TypeError, ValueError):
+                            score_val = 0.0
+                        _update_group_stats(group_stats, group_value, label, score_val)
 
                 processed += len(batch_rows)
 
@@ -220,13 +348,15 @@ def main() -> int:
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                 "input_csv": str(s.input_csv),
                 "output_csv": str(s.output_csv),
-                "text_col": s.text_col,
-                "id_col": s.id_col,
+                "text_col": text_col,
+                "id_col": id_col,
                 "model_name": s.model_name,
                 "batch_size": s.batch_size,
                 "max_len": s.max_len,
                 "max_rows": s.max_rows,
                 "metrics_port": s.metrics_port,
+                "dataset_type": dataset_type,
+                "group_col": group_col,
                 "rows_seen": rows_seen,
                 "processed": processed,
                 "failed": failed,
@@ -243,13 +373,15 @@ def main() -> int:
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                 "input_csv": str(s.input_csv),
                 "output_csv": str(s.output_csv),
-                "text_col": s.text_col,
-                "id_col": s.id_col,
+                "text_col": text_col,
+                "id_col": id_col,
                 "model_name": s.model_name,
                 "batch_size": s.batch_size,
                 "max_len": s.max_len,
                 "max_rows": s.max_rows,
                 "metrics_port": s.metrics_port,
+                "dataset_type": dataset_type,
+                "group_col": group_col,
                 "rows_seen": rows_seen,
                 "processed": processed,
                 "failed": failed,
@@ -258,6 +390,13 @@ def main() -> int:
         )
     except Exception:
         logger.exception("Failed to append run history", extra={"run_history_path": str(s.run_history_path)})
+
+    summary_json = s.output_csv.with_name(f"{s.output_csv.stem}_group_summary.json")
+    summary_csv = s.output_csv.with_name(f"{s.output_csv.stem}_group_summary.csv")
+    try:
+        _write_group_summary(summary_json, summary_csv, dataset_type, group_col, group_stats)
+    except Exception:
+        logger.exception("Failed to write group summary", extra={"path": str(summary_json)})
 
     # Non-zero if anything failed (useful in CI)
     return 1 if failed > 0 else 0
