@@ -205,22 +205,61 @@ def main() -> int:
             logger.error("CSV is empty")
             return 2
 
-        if _is_header_row(first_row):
+        headerless_mode = False
+        if s.csv_mode == "header":
             f_in.seek(0)
-            reader: Any = csv.DictReader(f_in)
+            reader = csv.DictReader(f_in)
             fieldnames = [cell.strip() for cell in (reader.fieldnames or [])]
-        else:
+        elif s.csv_mode == "headerless":
+            headerless_mode = True
             fieldnames = _infer_headerless_fieldnames(first_row)
             data_iter = itertools.chain([first_row], raw_reader)
             reader = ({name: value for name, value in zip(fieldnames, row)} for row in data_iter)
+        else:
+            if _is_header_row(first_row):
+                f_in.seek(0)
+                reader = csv.DictReader(f_in)
+                fieldnames = [cell.strip() for cell in (reader.fieldnames or [])]
+            else:
+                headerless_mode = True
+                fieldnames = _infer_headerless_fieldnames(first_row)
+                data_iter = itertools.chain([first_row], raw_reader)
+                reader = ({name: value for name, value in zip(fieldnames, row)} for row in data_iter)
 
         headers = set(fieldnames)
         text_col = s.text_col
-        if text_col not in headers:
+        if s.text_col_index is not None:
+            if not (0 <= s.text_col_index < len(fieldnames)):
+                logger.error(
+                    "TEXT_COL_INDEX out of range",
+                    extra={"text_col_index": s.text_col_index, "field_count": len(fieldnames)},
+                )
+                return 2
+            text_col = fieldnames[s.text_col_index]
+        elif headerless_mode:
+            logger.error("Headerless CSV requires TEXT_COL_INDEX")
+            return 2
+
+        if not headerless_mode and text_col not in headers:
             for candidate in ["text", "Text", "review_text", "review", "content"]:
                 if candidate in headers:
                     text_col = candidate
                     break
+
+        id_col: str | None = None
+        if s.id_col_index is not None:
+            if not (0 <= s.id_col_index < len(fieldnames)):
+                logger.error(
+                    "ID_COL_INDEX out of range",
+                    extra={"id_col_index": s.id_col_index, "field_count": len(fieldnames)},
+                )
+                return 2
+            id_col = fieldnames[s.id_col_index]
+        elif s.id_col:
+            id_col = s.id_col
+            if id_col not in headers:
+                logger.error("ID_COL not found in CSV headers", extra={"id_col": id_col})
+                return 2
 
         dataset_type = _dataset_name_from_path(s.input_csv)
         group_col = _infer_group_col(headers)
@@ -230,6 +269,8 @@ def main() -> int:
             return 2
 
         out_headers: List[str] = []
+        if id_col:
+            out_headers.append(id_col)
         out_headers += [text_col, "label", "score", "error"]
 
         with s.output_csv.open("w", newline="", encoding="utf-8") as f_out:
@@ -261,6 +302,8 @@ def main() -> int:
                             "score": "",
                             "error": str(e),
                         }
+                        if id_col:
+                            out[id_col] = r.get(id_col, "")
                         writer.writerow(out)
                     failed += len(batch_rows)
                     metrics.inc_failed(len(batch_rows))
@@ -319,6 +362,8 @@ def main() -> int:
                         "score": score,
                         "error": "",
                     }
+                    if id_col:
+                        out[id_col] = r.get(id_col, "")
                     writer.writerow(out)
 
                     if group_col and group_col in headers:

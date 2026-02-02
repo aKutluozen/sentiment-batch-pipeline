@@ -1,4 +1,4 @@
-.PHONY: help headless dashboard clean-docker clean-cache clean-artifacts clean-all
+.PHONY: help headless dashboard test test-docker clean-docker clean-cache clean-artifacts clean-all
 
 VENV_PY := $(wildcard .venv/bin/python)
 ifeq ($(VENV_PY),)
@@ -11,6 +11,8 @@ help:
 	@echo "Targets:"
 	@echo "  headless       Run batch inference (no UI)"
 	@echo "  dashboard      Run dashboard (single container)"
+	@echo "  test           Run pytest locally"
+	@echo "  test-docker    Run pytest in Docker"
 	@echo "  clean-docker   Stop/remove all Docker containers"
 	@echo "  clean-cache    Remove hf_cache Docker volume"
 	@echo "  clean-artifacts Remove output artifacts (runs, logs, uploads)"
@@ -29,6 +31,13 @@ run-example-headless:
 	BATCH_SIZE=128 MAX_ROWS=500 \
 	METRICS_PORT=8000 \
 	./run.sh
+
+test:
+	@$(PYTHON) -m pytest -q
+
+test-docker:
+	@docker build -t iqrush-test .
+	@docker run --rm -w /app -e PYTHONPATH=/app iqrush-test pytest -q
 
 clean-docker:
 	@./cleanup.sh

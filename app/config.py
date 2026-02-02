@@ -40,7 +40,11 @@ class Settings:
     output_csv: Path
     run_history_path: Path
     run_live_path: Path
+    csv_mode: str
     text_col: str
+    text_col_index: int | None
+    id_col: str | None
+    id_col_index: int | None
     max_rows: int | None
     model_name: str
     batch_size: int
@@ -54,7 +58,16 @@ def load_settings() -> Settings:
     run_history_path = Path(_get_str("RUN_HISTORY_PATH", "output/run_history.jsonl"))
     run_live_path = Path(_get_str("RUN_LIVE_PATH", "output/live_metrics.json"))
 
+    csv_mode = _get_str("CSV_MODE", "auto").lower()
+    if csv_mode not in {"auto", "header", "headerless"}:
+        raise ValueError("CSV_MODE must be one of: auto, header, headerless")
+
     text_col = _get_str("TEXT_COL", "Text")
+    text_col_index = _get_optional_int("TEXT_COL_INDEX")
+
+    id_col_raw = _get_str("ID_COL", "")
+    id_col = id_col_raw or None
+    id_col_index = _get_optional_int("ID_COL_INDEX")
 
     model_name = _get_str(
         "MODEL_NAME",
@@ -82,7 +95,11 @@ def load_settings() -> Settings:
         output_csv=output_csv,
         run_history_path=run_history_path,
         run_live_path=run_live_path,
+        csv_mode=csv_mode,
         text_col=text_col,
+        text_col_index=text_col_index,
+        id_col=id_col,
+        id_col_index=id_col_index,
         max_rows=max_rows,
         model_name=model_name,
         batch_size=batch_size,
