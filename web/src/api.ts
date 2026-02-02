@@ -1,5 +1,5 @@
 export type LiveSnapshot = {
-  status: "running" | "complete" | "idle";
+  status: "running" | "complete" | "idle" | "starting" | "cancelled" | "failed";
   timestamp: string;
   input_csv: string;
   output_csv: string;

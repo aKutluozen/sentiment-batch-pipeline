@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
   BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  ChartData,
+  ChartOptions,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
   Title,
   Tooltip,
-  Legend,
 } from "chart.js";
-import { Bar, Line, Scatter } from "react-chartjs-2";
 import {
   cancelRun,
   fetchModels,
@@ -25,6 +26,16 @@ import {
   startRun,
   subscribeLive,
 } from "./api";
+import HeaderBar from "./components/HeaderBar";
+import LiveMetricsCard from "./components/LiveMetricsCard";
+import PredictionsCard from "./components/PredictionsCard";
+import RecentRunsCard from "./components/RecentRunsCard";
+import RunComparisonsCard from "./components/RunComparisonsCard";
+import RunFormCard from "./components/RunFormCard";
+import RunHistoryCard from "./components/RunHistoryCard";
+import RunLogsCard from "./components/RunLogsCard";
+import SummaryCard from "./components/SummaryCard";
+import { GroupedScoreRow, RunParams } from "./types";
 
 ChartJS.register(
   CategoryScale,
@@ -37,405 +48,371 @@ ChartJS.register(
   Legend
 );
 
+const defaultParams: RunParams = {
+  output_csv: "output/predictions.csv",
+  text_col: "Text",
+  model_name: "distilbert-base-uncased-finetuned-sst-2-english",
+  batch_size: 32,
+  max_len: 256,
+  max_rows: "",
+  metrics_port: "",
+};
+
+const chartTextColor = "#9aa1d8";
+const chartGridColor = "rgba(60, 66, 130, 0.25)";
+
+const buildSummaryPath = (outputCsv: string) => {
+  if (!outputCsv) {
+    return "";
+  }
+  const dotIndex = outputCsv.lastIndexOf(".");
+  if (dotIndex === -1) {
+    return `${outputCsv}_group_summary.json`;
+  }
+  return `${outputCsv.slice(0, dotIndex)}_group_summary.json`;
+};
+
 export default function App() {
-  const [live, setLive] = useState<LiveSnapshot | null>(null);
-  const [runs, setRuns] = useState<LiveSnapshot[]>([]);
-  const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [file, setFile] = useState<File | null>(null);
+  const [params, setParams] = useState<RunParams>(defaultParams);
+  const [modelMode, setModelMode] = useState<"list" | "custom">("list");
+  const [models, setModels] = useState<ModelInfo[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [formBusy, setFormBusy] = useState(false);
-  const [predictions, setPredictions] = useState<Record<string, string>[]>([]);
-  const [outputPath, setOutputPath] = useState<string | null>(null);
-  const [summaryPath, setSummaryPath] = useState<string | null>(null);
-  const [summary, setSummary] = useState<GroupSummary | null>(null);
-  const [predLimit, setPredLimit] = useState<"all" | number>(25);
-  const [summaryLimit, setSummaryLimit] = useState<"all" | number>(25);
-  const [recentLimit, setRecentLimit] = useState<"all" | number>(25);
-  const [predSort, setPredSort] = useState<"none" | "asc" | "desc">("none");
-  const [datasetFilter, setDatasetFilter] = useState("all");
-  const [params, setParams] = useState({
-    output_csv: "output/predictions.csv",
-    text_col: "Text",
-    model_name: "distilbert-base-uncased-finetuned-sst-2-english",
-    batch_size: 32,
-    max_len: 256,
-    max_rows: "",
-    metrics_port: "",
-  });
   const [runStatus, setRunStatus] = useState<RunStatus | null>(null);
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [modelMode, setModelMode] = useState<"list" | "custom">("list");
-
-  useEffect(() => {
-    const source = subscribeLive(setLive);
-    return () => source.close();
-  }, []);
-
-  useEffect(() => {
-    fetchModels()
-      .then(setModels)
-      .catch(() => setModels([]));
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetchRuns(query)
-      .then((data) => {
-        if (!cancelled) {
-          setRuns(data);
-          setError(null);
-        }
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e.message);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [query, refreshKey]);
-
-  useEffect(() => {
-    if (live?.status === "complete") {
-      setRefreshKey((k) => k + 1);
-      fetchPredictions(outputPath ?? undefined, predLimit === "all" ? 0 : predLimit)
-        .then(setPredictions)
-        .catch(() => undefined);
-      fetchSummary(summaryPath ?? undefined)
-        .then(setSummary)
-        .catch(() => undefined);
-    }
-  }, [live?.status, outputPath, summaryPath, predLimit]);
-
-  useEffect(() => {
-    if (datasetFilter === "all") {
-      return;
-    }
-    const latestMatch = [...runs].reverse().find((run) => run.dataset_type === datasetFilter);
-    if (!latestMatch) {
-      setOutputPath(null);
-      setSummaryPath(null);
-      setPredictions([]);
-      setSummary(null);
-      return;
-    }
-    setOutputPath(latestMatch.output_csv);
-    const summaryCandidate = latestMatch.output_csv.replace(/\.csv$/i, "_group_summary.json");
-    setSummaryPath(summaryCandidate);
-    fetchPredictions(latestMatch.output_csv, predLimit === "all" ? 0 : predLimit)
-      .then(setPredictions)
-      .catch(() => undefined);
-    fetchSummary(summaryCandidate)
-      .then(setSummary)
-      .catch(() => undefined);
-  }, [datasetFilter, predLimit, runs]);
+  const [live, setLive] = useState<LiveSnapshot | null>(null);
+  const [runs, setRuns] = useState<LiveSnapshot[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [predictions, setPredictions] = useState<Record<string, string>[]>([]);
+  const [summary, setSummary] = useState<GroupSummary | null>(null);
+  const [outputCsvPath, setOutputCsvPath] = useState(defaultParams.output_csv);
+  const [summaryPath, setSummaryPath] = useState<string | null>(null);
+  const [recentLimit, setRecentLimit] = useState<"all" | number>(25);
+  const [predLimit, setPredLimit] = useState<"all" | number>(25);
+  const [predSort, setPredSort] = useState<"none" | "asc" | "desc">("none");
+  const [summaryLimit, setSummaryLimit] = useState<"all" | number>(10);
+  const [datasetFilter, setDatasetFilter] = useState("all");
 
   useEffect(() => {
     let active = true;
-    const poll = async () => {
-      try {
-        const status = await fetchRunStatus();
-        if (active) {
-          setRunStatus(status);
+    fetchModels()
+      .then((data) => {
+        if (!active) {
+          return;
         }
-      } catch {
-        if (active) {
-          setRunStatus(null);
-        }
-      }
-    };
-    poll();
-    const interval = window.setInterval(poll, 2000);
+        setModels(data);
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
-      window.clearInterval(interval);
     };
   }, []);
 
-  async function handleRunSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (!file) {
-      setFormError("Please select a CSV file to upload.");
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    fetchRuns(query)
+      .then((data) => {
+        if (!active) {
+          return;
+        }
+        setRuns(data);
+      })
+      .catch((err: unknown) => {
+        if (!active) {
+          return;
+        }
+        setError(err instanceof Error ? err.message : "Failed to fetch runs");
+      })
+      .finally(() => {
+        if (!active) {
+          return;
+        }
+        setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [query]);
+
+  useEffect(() => {
+    const source = subscribeLive((next) => {
+      setLive(next);
+    });
+    return () => {
+      source.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const updateStatus = () => {
+      fetchRunStatus()
+        .then((status) => {
+          if (!active) {
+            return;
+          }
+          setRunStatus(status);
+        })
+        .catch(() => undefined);
+    };
+    updateStatus();
+    const interval = setInterval(updateStatus, 2000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (live?.output_csv) {
+      setOutputCsvPath(live.output_csv);
+    }
+  }, [live?.output_csv]);
+
+  useEffect(() => {
+    const path = outputCsvPath || defaultParams.output_csv;
+    const summaryTarget = summaryPath ?? buildSummaryPath(path);
+
+    fetchPredictions(path)
+      .then((rows) => setPredictions(rows))
+      .catch(() => setPredictions([]));
+
+    if (summaryTarget) {
+      fetchSummary(summaryTarget)
+        .then((data) => setSummary(data))
+        .catch(() => setSummary(null));
+    }
+  }, [outputCsvPath, summaryPath]);
+
+  useEffect(() => {
+    if (!live) {
       return;
     }
-    setFormError(null);
-    setFormBusy(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("output_csv", params.output_csv);
-    formData.append("text_col", params.text_col);
-    formData.append("model_name", params.model_name);
-    formData.append("batch_size", String(params.batch_size));
-    formData.append("max_len", String(params.max_len));
-    if (params.max_rows) {
-      formData.append("max_rows", params.max_rows);
+    if (live.status === "complete" || live.status === "failed" || live.status === "cancelled") {
+      fetchRuns(query)
+        .then((data) => setRuns(data))
+        .catch(() => undefined);
     }
-    if (params.metrics_port) {
-      formData.append("metrics_port", params.metrics_port);
-    }
-
-    try {
-      const response = await startRun(formData);
-      setOutputPath(response.output_csv);
-      setSummaryPath(response.summary_path ?? null);
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Failed to start run");
-    } finally {
-      setFormBusy(false);
-    }
-  }
+  }, [live, query]);
 
   const datasetOptions = useMemo(() => {
-    const values = Array.from(new Set(runs.map((run) => run.dataset_type).filter(Boolean))) as string[];
-    return ["all", ...values];
+    const options = new Set<string>();
+    runs.forEach((run) => {
+      if (run.dataset_type) {
+        options.add(run.dataset_type);
+      }
+    });
+    return ["all", ...Array.from(options).sort()];
   }, [runs]);
+
+  useEffect(() => {
+    if (datasetFilter !== "all" && !datasetOptions.includes(datasetFilter)) {
+      setDatasetFilter("all");
+    }
+  }, [datasetFilter, datasetOptions]);
 
   const filteredRuns = useMemo(() => {
     if (datasetFilter === "all") {
       return runs;
     }
     return runs.filter((run) => run.dataset_type === datasetFilter);
-  }, [datasetFilter, runs]);
+  }, [runs, datasetFilter]);
 
-  const runIndex = useMemo(() => filteredRuns.map((_, i) => i + 1), [filteredRuns]);
+  const predictionKeys = useMemo(() => {
+    if (predictions.length === 0) {
+      return [] as string[];
+    }
+    return Object.keys(predictions[0]);
+  }, [predictions]);
 
-  const runtimeData = useMemo(
-    () => ({
-      labels: runIndex,
+  const predictionsToShow = useMemo(() => {
+    const rows = [...predictions];
+    if (predSort !== "none") {
+      rows.sort((a, b) => {
+        const aScore = Number(a.score ?? 0);
+        const bScore = Number(b.score ?? 0);
+        return predSort === "asc" ? aScore - bScore : bScore - aScore;
+      });
+    }
+    if (predLimit === "all") {
+      return rows;
+    }
+    return rows.slice(0, predLimit);
+  }, [predictions, predLimit, predSort]);
+
+  const summaryGroups = useMemo(() => {
+    if (!summary) {
+      return [] as GroupSummary["groups"];
+    }
+    if (summaryLimit === "all") {
+      return summary.groups;
+    }
+    return summary.groups.slice(0, summaryLimit);
+  }, [summary, summaryLimit]);
+
+  const runtimeData: ChartData<"line"> = useMemo(() => {
+    const labels = filteredRuns.map((run) => run.timestamp);
+    return {
+      labels,
       datasets: [
         {
           label: "Runtime (s)",
-          data: filteredRuns.map((r) => r.runtime_s ?? 0),
-          borderColor: "#60a5fa",
-          backgroundColor: "rgba(96,165,250,0.3)",
-          tension: 0.25,
+          data: filteredRuns.map((run) => run.runtime_s),
+          borderColor: "#4c6dff",
+          backgroundColor: "rgba(76, 109, 255, 0.35)",
+          tension: 0.3,
+          fill: true,
         },
       ],
-    }),
-    [runIndex, filteredRuns]
-  );
-
-  const processedData = useMemo(
-    () => ({
-      labels: runIndex,
-      datasets: [
-        {
-          label: "Processed",
-          data: filteredRuns.map((r) => r.processed ?? 0),
-          borderColor: "#34d399",
-          backgroundColor: "rgba(52,211,153,0.3)",
-          tension: 0.25,
-        },
-        {
-          label: "Failed",
-          data: filteredRuns.map((r) => r.failed ?? 0),
-          borderColor: "#f87171",
-          backgroundColor: "rgba(248,113,113,0.3)",
-          tension: 0.25,
-        },
-      ],
-    }),
-    [runIndex, filteredRuns]
-  );
-
-  const runChartOptions = useMemo(
-    () => ({
-      plugins: {
-        tooltip: {
-          callbacks: {
-            afterBody: (items: { dataIndex: number }[]) => {
-              const idx = items[0]?.dataIndex;
-              const run = typeof idx === "number" ? filteredRuns[idx] : undefined;
-              return run ? `Max len: ${run.max_len}` : "";
-            },
-          },
-        },
-      },
-    }),
-    [filteredRuns]
-  );
-
-  const scoreDistributionData = useMemo(
-    () => ({
-      labels: runIndex,
-      datasets: [
-        {
-          label: "Positive",
-          data: filteredRuns.map((run) => run.positive ?? 0),
-          backgroundColor: "rgba(52, 211, 153, 0.6)",
-          borderColor: "#34d399",
-        },
-        {
-          label: "Negative",
-          data: filteredRuns.map((run) => run.negative ?? 0),
-          backgroundColor: "rgba(248, 113, 113, 0.6)",
-          borderColor: "#f87171",
-        },
-        {
-          label: "Neutral",
-          data: filteredRuns.map((run) => run.neutral ?? 0),
-          backgroundColor: "rgba(148, 163, 184, 0.6)",
-          borderColor: "#94a3b8",
-        },
-      ],
-    }),
-    [runIndex, filteredRuns]
-  );
-
-  const scoreDistributionOptions = useMemo(
-    () => ({
-      responsive: true,
-      plugins: {
-        legend: { position: "bottom" as const },
-        tooltip: {
-          callbacks: {
-            afterBody: (items: { dataIndex: number }[]) => {
-              const idx = items[0]?.dataIndex;
-              const run = typeof idx === "number" ? filteredRuns[idx] : undefined;
-              if (!run) {
-                return "";
-              }
-              const avgScore = (run.avg_score ?? 0) * 100;
-              return `Avg score: ${avgScore.toFixed(1)}%`;
-            },
-          },
-        },
-      },
-      scales: {
-        x: { stacked: true },
-        y: { stacked: true, title: { display: true, text: "Rows" } },
-      },
-    }),
-    [filteredRuns]
-  );
-
-  const comparisonRuns = useMemo(() => {
-    return filteredRuns.filter((run) => run.runtime_s && run.runtime_s > 0);
+    };
   }, [filteredRuns]);
 
-  const batchSizes = useMemo(() => {
-    const unique = Array.from(new Set(comparisonRuns.map((run) => run.batch_size))).sort(
-      (a, b) => a - b
-    );
-    return unique;
-  }, [comparisonRuns]);
+  const processedData: ChartData<"line"> = useMemo(() => {
+    const labels = filteredRuns.map((run) => run.timestamp);
+    return {
+      labels,
+      datasets: [
+        {
+          label: "Processed rows",
+          data: filteredRuns.map((run) => run.processed),
+          borderColor: "#48d07a",
+          backgroundColor: "rgba(72, 208, 122, 0.25)",
+          tension: 0.3,
+          fill: true,
+        },
+      ],
+    };
+  }, [filteredRuns]);
 
-  const maxLens = useMemo(() => {
-    const unique = Array.from(new Set(comparisonRuns.map((run) => run.max_len))).sort(
-      (a, b) => a - b
-    );
-    return unique;
-  }, [comparisonRuns]);
-
-  const scatterData = useMemo(() => {
-    const palette = [
-      "#60a5fa",
-      "#34d399",
-      "#f59e0b",
-      "#f472b6",
-      "#a78bfa",
-      "#f87171",
-      "#22d3ee",
-    ];
-    const datasets = batchSizes.map((batchSize, idx) => {
-      const points = comparisonRuns
-        .filter((run) => run.batch_size === batchSize)
-        .map((run) => ({
-          x: run.max_len,
-          y: run.processed && run.runtime_s ? run.processed / run.runtime_s : 0,
-        }));
-      return {
-        label: `Batch ${batchSize}`,
-        data: points,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        backgroundColor: palette[idx % palette.length],
-      };
-    });
-    return { datasets };
-  }, [batchSizes, comparisonRuns]);
-
-  const scatterOptions = useMemo(
+  const runChartOptions: ChartOptions<"line"> = useMemo(
     () => ({
+      responsive: true,
+      maintainAspectRatio: false,
       plugins: {
-        legend: {
-          position: "bottom" as const,
-        },
-        tooltip: {
-          callbacks: {
-            label: (ctx: { raw: { x: number; y: number } }) => {
-              const value = ctx.raw;
-              return `max_len=${value.x}, throughput=${value.y.toFixed(2)} rows/s`;
-            },
-          },
-        },
+        legend: { display: false },
       },
       scales: {
         x: {
-          title: { display: true, text: "Max length" },
-          ticks: { precision: 0 },
+          ticks: { color: chartTextColor },
+          grid: { color: chartGridColor },
         },
         y: {
-          title: { display: true, text: "Throughput (rows/s)" },
+          ticks: { color: chartTextColor },
+          grid: { color: chartGridColor },
         },
       },
     }),
     []
   );
 
+  const comparisonRuns = useMemo(() => {
+    return filteredRuns.filter((run) => run.runtime_s && run.runtime_s > 0);
+  }, [filteredRuns]);
+
+  const scatterData: ChartData<"scatter"> = useMemo(() => {
+    return {
+      datasets: [
+        {
+          label: "Runs",
+          data: comparisonRuns.map((run) => ({
+            x: run.max_len,
+            y: run.batch_size,
+            throughput: run.runtime_s ? run.processed / run.runtime_s : 0,
+          })),
+          backgroundColor: "rgba(76, 109, 255, 0.7)",
+        },
+      ],
+    };
+  }, [comparisonRuns]);
+
+  const scatterOptions: ChartOptions<"scatter"> = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const raw = ctx.raw as { x: number; y: number; throughput: number };
+              return `batch ${raw.y}, max len ${raw.x}, ${raw.throughput.toFixed(1)} rows/s`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: { display: true, text: "Max len", color: chartTextColor },
+          ticks: { color: chartTextColor },
+          grid: { color: chartGridColor },
+        },
+        y: {
+          title: { display: true, text: "Batch size", color: chartTextColor },
+          ticks: { color: chartTextColor },
+          grid: { color: chartGridColor },
+        },
+      },
+    }),
+    []
+  );
+
+  const maxLens = useMemo(() => {
+    const values = new Set<number>();
+    comparisonRuns.forEach((run) => values.add(run.max_len));
+    return Array.from(values).sort((a, b) => a - b);
+  }, [comparisonRuns]);
+
+  const batchSizes = useMemo(() => {
+    const values = new Set<number>();
+    comparisonRuns.forEach((run) => values.add(run.batch_size));
+    return Array.from(values).sort((a, b) => a - b);
+  }, [comparisonRuns]);
+
   const heatmapMatrix = useMemo(() => {
-    const matrix = batchSizes.map((batchSize) =>
+    return batchSizes.map((batchSize) =>
       maxLens.map((maxLen) => {
-        const matches = comparisonRuns.filter(
-          (run) => run.batch_size === batchSize && run.max_len === maxLen
+        const candidates = comparisonRuns.filter(
+          (run) => run.batch_size === batchSize && run.max_len === maxLen && run.runtime_s
         );
-        if (matches.length === 0) {
+        if (candidates.length === 0) {
           return null;
         }
-        const avgThroughput =
-          matches.reduce((acc, run) => acc + run.processed / run.runtime_s, 0) /
-          matches.length;
-        return avgThroughput;
+        const throughput =
+          candidates.reduce(
+            (sum, run) => sum + run.processed / (run.runtime_s || 1),
+            0
+          ) / candidates.length;
+        return throughput;
       })
     );
-    return matrix;
   }, [batchSizes, maxLens, comparisonRuns]);
 
   const heatmapScale = useMemo(() => {
-    const values = heatmapMatrix.flatMap((row) => row.filter((value) => value !== null)) as number[];
-    const min = values.length ? Math.min(...values) : 0;
-    const max = values.length ? Math.max(...values) : 1;
-    return { min, max };
+    const flat = heatmapMatrix.flat().filter((value): value is number => value !== null);
+    if (flat.length === 0) {
+      return { min: 0, max: 0 };
+    }
+    return {
+      min: Math.min(...flat),
+      max: Math.max(...flat),
+    };
   }, [heatmapMatrix]);
 
   const groupedScoreRows = useMemo(() => {
-    const grouped = new Map<
-      string,
-      {
-        batch_size: number;
-        max_len: number;
-        runs: number;
-        processed: number;
-        positive: number;
-        negative: number;
-        neutral: number;
-        score_sum: number;
-      }
-    >();
-
+    const grouped = new Map<string, GroupedScoreRow>();
     filteredRuns.forEach((run) => {
       const key = `${run.batch_size}-${run.max_len}`;
-      const entry = grouped.get(key) ?? {
+      const processed = run.processed ?? 0;
+      const positive = run.positive ?? 0;
+      const negative = run.negative ?? 0;
+      const neutral = run.neutral ?? 0;
+      const scoreSum = (run.avg_score ?? 0) * processed;
+      const current = grouped.get(key) ?? {
         batch_size: run.batch_size,
         max_len: run.max_len,
         runs: 0,
@@ -445,94 +422,122 @@ export default function App() {
         neutral: 0,
         score_sum: 0,
       };
-      const processed = run.processed ?? 0;
-      entry.runs += 1;
-      entry.processed += processed;
-      entry.positive += run.positive ?? 0;
-      entry.negative += run.negative ?? 0;
-      entry.neutral += run.neutral ?? 0;
-      entry.score_sum += (run.avg_score ?? 0) * processed;
-      grouped.set(key, entry);
+      current.runs += 1;
+      current.processed += processed;
+      current.positive += positive;
+      current.negative += negative;
+      current.neutral += neutral;
+      current.score_sum += scoreSum;
+      grouped.set(key, current);
     });
-
-    return Array.from(grouped.values()).sort((a, b) => {
-      if (a.batch_size !== b.batch_size) {
-        return a.batch_size - b.batch_size;
-      }
-      return a.max_len - b.max_len;
-    });
+    return Array.from(grouped.values()).sort(
+      (a, b) => a.batch_size - b.batch_size || a.max_len - b.max_len
+    );
   }, [filteredRuns]);
 
-  const summaryTotals = useMemo(() => {
-    if (!summary) {
-      return { total: 0, avgScore: 0 };
-    }
-    const total = summary.groups.reduce((acc, group) => acc + group.total, 0);
-    const weighted = summary.groups.reduce(
-      (acc, group) => acc + group.avg_score * group.total,
-      0
+  const scoreTotals = useMemo(() => {
+    return filteredRuns.reduce(
+      (acc, run) => {
+        acc.processed += run.processed ?? 0;
+        acc.positive += run.positive ?? 0;
+        acc.negative += run.negative ?? 0;
+        acc.neutral += run.neutral ?? 0;
+        return acc;
+      },
+      { processed: 0, positive: 0, negative: 0, neutral: 0 }
     );
-    let avgScore = total > 0 ? weighted / total : 0;
-    if (avgScore <= 1) {
-      avgScore *= 100;
-    }
-    avgScore = Math.min(100, Math.max(0, avgScore));
-    return { total, avgScore };
-  }, [summary]);
+  }, [filteredRuns]);
 
-  const skewLabel = useMemo(() => {
-    if (!summary) {
-      return "";
-    }
-    if (summaryTotals.avgScore >= 55) {
-      return "Positive Skew";
-    }
-    if (summaryTotals.avgScore <= 45) {
-      return "Negative Skew";
-    }
-    return "Neutral / Mixed";
-  }, [summary, summaryTotals.avgScore]);
+  const scoreDistributionData: ChartData<"bar"> = useMemo(() => {
+    const total = scoreTotals.processed || 1;
+    return {
+      labels: ["Positive", "Negative", "Neutral"],
+      datasets: [
+        {
+          label: "Share (%)",
+          data: [
+            (scoreTotals.positive / total) * 100,
+            (scoreTotals.negative / total) * 100,
+            (scoreTotals.neutral / total) * 100,
+          ],
+          backgroundColor: ["rgba(72, 208, 122, 0.7)", "rgba(255, 107, 107, 0.7)", "rgba(140, 148, 255, 0.7)"],
+        },
+      ],
+    };
+  }, [scoreTotals]);
 
-  const summaryGroups = useMemo(() => {
-    if (!summary) {
-      return [];
-    }
-    if (summaryLimit === "all") {
-      return summary.groups;
-    }
-    return summary.groups.slice(0, summaryLimit);
-  }, [summary, summaryLimit]);
-
-  const predictionKeys = useMemo(() => {
-    if (predictions.length === 0) {
-      return [];
-    }
-    return Object.keys(predictions[0]);
-  }, [predictions]);
-
-  const predictionsToShow = useMemo(() => {
-    const data = predSort === "none" ? predictions : [...predictions].sort((a, b) => {
-      const aScore = Number(a.score ?? a.Score ?? a.SCORE ?? 0);
-      const bScore = Number(b.score ?? b.Score ?? b.SCORE ?? 0);
-      const safeA = Number.isFinite(aScore) ? aScore : -Infinity;
-      const safeB = Number.isFinite(bScore) ? bScore : -Infinity;
-      return predSort === "asc" ? safeA - safeB : safeB - safeA;
-    });
-    if (predLimit === "all") {
-      return data;
-    }
-    return data.slice(0, predLimit);
-  }, [predictions, predLimit, predSort]);
+  const scoreDistributionOptions: ChartOptions<"bar"> = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+      },
+      scales: {
+        x: {
+          ticks: { color: chartTextColor },
+          grid: { color: chartGridColor },
+        },
+        y: {
+          ticks: { color: chartTextColor },
+          grid: { color: chartGridColor },
+          suggestedMax: 100,
+        },
+      },
+    }),
+    []
+  );
 
   const sentimentClass = (labelValue: string) => {
-    const normalized = labelValue.toLowerCase();
-    if (normalized.includes("pos")) {
+    const value = labelValue.toLowerCase();
+    if (value.includes("pos")) {
       return "text-positive";
     }
-    if (normalized.includes("neg")) {
+    if (value.includes("neg")) {
       return "text-negative";
     }
     return "text-average";
+  };
+
+  const handleRunSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setFormError(null);
+    if (!file) {
+      setFormError("Please select a CSV file.");
+      return;
+    }
+    setFormBusy(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (params.output_csv.trim()) {
+        formData.append("output_csv", params.output_csv.trim());
+      }
+      if (params.text_col.trim()) {
+        formData.append("text_col", params.text_col.trim());
+      }
+      if (params.model_name.trim()) {
+        formData.append("model_name", params.model_name.trim());
+      }
+      formData.append("batch_size", String(params.batch_size));
+      formData.append("max_len", String(params.max_len));
+      if (params.max_rows.trim()) {
+        formData.append("max_rows", params.max_rows.trim());
+      }
+      if (params.metrics_port.trim()) {
+        formData.append("metrics_port", params.metrics_port.trim());
+      }
+
+      const response = await startRun(formData);
+      setOutputCsvPath(response.output_csv);
+      setSummaryPath(response.summary_path ?? null);
+      const status = await fetchRunStatus();
+      setRunStatus(status);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Failed to start run");
+    } finally {
+      setFormBusy(false);
+    }
   };
 
   const formatShortTimestamp = (timestamp: string) => {
@@ -550,488 +555,81 @@ export default function App() {
 
   return (
     <div className="page">
-      <header className="header">
-        <div className="brand">
-          <img src="/logo.png" alt="IQRush" className="logo" />
-          <div>
-            <h1>IQRush Dashboard</h1>
-            <p>Realtime run telemetry + historical comparisons</p>
-          </div>
-        </div>
-        <div className="status">
-          <span className={`pill ${live?.status ?? "idle"}`}>{live?.status ?? "idle"}</span>
-          <span className="mono">{live?.timestamp ?? "no live data"}</span>
-        </div>
-      </header>
+      <HeaderBar live={live} />
 
       <section className="grid">
-        <div className="card">
-          <h2>Run a job</h2>
-          <form className="form" onSubmit={handleRunSubmit}>
-            <label>
-              CSV file
-              <input
-                type="file"
-                accept=".csv"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
-            </label>
-            <label>
-              Output CSV
-              <input
-                value={params.output_csv}
-                onChange={(e) => setParams({ ...params, output_csv: e.target.value })}
-              />
-            </label>
-            <label>
-              Text column
-              <input
-                value={params.text_col}
-                onChange={(e) => setParams({ ...params, text_col: e.target.value })}
-              />
-            </label>
-            <label>
-              Model
-              <select
-                value={modelMode === "list" ? params.model_name : "__custom__"}
-                onChange={(e) => {
-                  if (e.target.value === "__custom__") {
-                    setModelMode("custom");
-                  } else {
-                    setModelMode("list");
-                    setParams({ ...params, model_name: e.target.value });
-                  }
-                }}
-              >
-                {models.length === 0 && (
-                  <option value={params.model_name}>{params.model_name}</option>
-                )}
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.id}
-                  </option>
-                ))}
-                <option value="__custom__">Custom...</option>
-              </select>
-            </label>
-            {modelMode === "custom" && (
-              <label>
-                Custom model name
-                <input
-                  value={params.model_name}
-                  onChange={(e) => setParams({ ...params, model_name: e.target.value })}
-                />
-              </label>
-            )}
-            <div className="form-row">
-              <label>
-                Batch size
-                <input
-                  type="number"
-                  value={params.batch_size}
-                  onChange={(e) =>
-                    setParams({ ...params, batch_size: Number(e.target.value) || 1 })
-                  }
-                />
-              </label>
-              <label>
-                Max len
-                <input
-                  type="number"
-                  value={params.max_len}
-                  onChange={(e) => setParams({ ...params, max_len: Number(e.target.value) || 1 })}
-                />
-              </label>
-              <label>
-                Max rows
-                <input
-                  type="number"
-                  value={params.max_rows}
-                  onChange={(e) => setParams({ ...params, max_rows: e.target.value })}
-                />
-              </label>
-            </div>
-            <label>
-              Metrics port (optional)
-              <input
-                type="number"
-                value={params.metrics_port}
-                onChange={(e) => setParams({ ...params, metrics_port: e.target.value })}
-              />
-            </label>
-            {formError && <p className="error">{formError}</p>}
-            <div className="row">
-              <button type="submit" disabled={formBusy || runStatus?.running}>
-                {formBusy ? "Starting..." : runStatus?.running ? "Running" : "Run"}
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => cancelRun().catch(() => undefined)}
-                disabled={!runStatus?.running}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-        <div className="card">
-          <h2>Run logs</h2>
-          <div className="log">
-            <div className="row">
-              <span className="mono">{runStatus?.log_path ?? "no logs"}</span>
-            </div>
-            <pre>{runStatus?.log_tail || "No logs yet."}</pre>
-          </div>
-        </div>
-
-        <div className="card">
-          <h2>Live metrics</h2>
-          {live ? (
-            <div className="metrics">
-              <div>
-                <span>Processed</span>
-                <strong>{live.processed}</strong>
-              </div>
-              <div>
-                <span>Failed</span>
-                <strong>{live.failed}</strong>
-              </div>
-              <div>
-                <span>Rows seen</span>
-                <strong>{live.rows_seen}</strong>
-              </div>
-              <div>
-                <span>Runtime</span>
-                <strong>{live.runtime_s}s</strong>
-              </div>
-              <div>
-                <span>Batch size</span>
-                <strong>{live.batch_size}</strong>
-              </div>
-              <div>
-                <span>Max rows</span>
-                <strong>{live.max_rows ?? "∞"}</strong>
-              </div>
-            </div>
-          ) : (
-            <p className="muted">No live data yet. Start a run.</p>
-          )}
-        </div>
+        <RunFormCard
+          file={file}
+          setFile={setFile}
+          params={params}
+          setParams={setParams}
+          formError={formError}
+          formBusy={formBusy}
+          runStatus={runStatus}
+          models={models}
+          modelMode={modelMode}
+          setModelMode={setModelMode}
+          onSubmit={handleRunSubmit}
+          onCancel={() => cancelRun().catch(() => undefined)}
+        />
+        <RunLogsCard runStatus={runStatus} />
+        <LiveMetricsCard live={live} />
       </section>
 
-      <section className="card">
-        <div className="row">
-          <h2>Run history</h2>
-          <div className="control-group">
-            <div className="search">
-              <input
-                placeholder="Search by model, param, file..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-            <select value={datasetFilter} onChange={(e) => setDatasetFilter(e.target.value)}>
-              {datasetOptions.map((dataset) => (
-                <option key={dataset} value={dataset}>
-                  {dataset === "all" ? "All datasets" : dataset}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        {loading && <p className="muted">Loading runs...</p>}
-        {error && <p className="error">{error}</p>}
-        {!loading && filteredRuns.length === 0 && <p className="muted">No run history yet.</p>}
-        {filteredRuns.length > 0 && (
-          <div className="charts">
-            <div className="chart">
-              <Line data={runtimeData} options={runChartOptions} />
-            </div>
-            <div className="chart">
-              <Line data={processedData} options={runChartOptions} />
-            </div>
-          </div>
-        )}
-      </section>
+      <RunHistoryCard
+        query={query}
+        setQuery={setQuery}
+        datasetFilter={datasetFilter}
+        setDatasetFilter={setDatasetFilter}
+        datasetOptions={datasetOptions}
+        loading={loading}
+        error={error}
+        filteredRuns={filteredRuns}
+        runtimeData={runtimeData}
+        processedData={processedData}
+        runChartOptions={runChartOptions}
+      />
 
-      <section className="card">
-        <div className="row">
-          <h2>Run comparisons</h2>
-          <span className="mono">
-            {datasetFilter === "all" ? "All datasets" : datasetFilter}
-          </span>
-        </div>
-        {comparisonRuns.length === 0 ? (
-          <p className="muted">Run a few jobs to compare batch size vs max length.</p>
-        ) : (
-          <div className="charts">
-            <div className="chart">
-              <Scatter data={scatterData} options={scatterOptions} />
-            </div>
-            <div className="chart">
-              <div className="heatmap" style={{ "--heatmap-cols": maxLens.length + 1 } as React.CSSProperties}>
-                <div className="heatmap-row heatmap-header">
-                  <span className="heatmap-label">Batch \ Max len</span>
-                  {maxLens.map((maxLen) => (
-                    <span key={`maxlen-${maxLen}`} className="heatmap-label">
-                      {maxLen}
-                    </span>
-                  ))}
-                </div>
-                {batchSizes.map((batchSize, rowIndex) => (
-                  <div className="heatmap-row" key={`batch-${batchSize}`}>
-                    <span className="heatmap-label">{batchSize}</span>
-                    {maxLens.map((maxLen, colIndex) => {
-                      const value = heatmapMatrix[rowIndex]?.[colIndex] ?? null;
-                      const normalized =
-                        value === null || heatmapScale.max === heatmapScale.min
-                          ? 0
-                          : (value - heatmapScale.min) / (heatmapScale.max - heatmapScale.min);
-                      const alpha = 0.15 + normalized * 0.85;
-                      return (
-                        <span
-                          key={`cell-${batchSize}-${maxLen}`}
-                          className="heatmap-cell"
-                          style={{
-                            background: value === null ? "rgba(255,255,255,0.04)" : `rgba(76, 109, 255, ${alpha})`,
-                          }}
-                          title={
-                            value === null
-                              ? "No runs"
-                              : `Throughput: ${value.toFixed(2)} rows/s`
-                          }
-                        >
-                          {value === null ? "—" : value.toFixed(1)}
-                        </span>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="chart">
-              <Bar data={scoreDistributionData} options={scoreDistributionOptions} />
-            </div>
-          </div>
-        )}
-        {groupedScoreRows.length > 0 && (
-          <div className="table comparison-table">
-            <div className="row header">
-              <span>Batch</span>
-              <span>Max len</span>
-              <span>Runs</span>
-              <span>Avg score</span>
-              <span>Positive %</span>
-              <span>Negative %</span>
-              <span>Neutral %</span>
-            </div>
-            {groupedScoreRows.map((row) => {
-              const avgScore = row.processed ? (row.score_sum / row.processed) * 100 : 0;
-              const positiveRate = row.processed ? (row.positive / row.processed) * 100 : 0;
-              const negativeRate = row.processed ? (row.negative / row.processed) * 100 : 0;
-              const neutralRate = row.processed ? (row.neutral / row.processed) * 100 : 0;
-              return (
-                <div className="row" key={`${row.batch_size}-${row.max_len}`}>
-                  <span>{row.batch_size}</span>
-                  <span>{row.max_len}</span>
-                  <span>{row.runs}</span>
-                  <span className="text-average">{avgScore.toFixed(1)}%</span>
-                  <span className="text-positive">{positiveRate.toFixed(1)}%</span>
-                  <span className="text-negative">{negativeRate.toFixed(1)}%</span>
-                  <span className="muted">{neutralRate.toFixed(1)}%</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <RunComparisonsCard
+        datasetFilter={datasetFilter}
+        comparisonRuns={comparisonRuns}
+        scatterData={scatterData}
+        scatterOptions={scatterOptions}
+        maxLens={maxLens}
+        batchSizes={batchSizes}
+        heatmapMatrix={heatmapMatrix}
+        heatmapScale={heatmapScale}
+        scoreDistributionData={scoreDistributionData}
+        scoreDistributionOptions={scoreDistributionOptions}
+        groupedScoreRows={groupedScoreRows}
+      />
 
-      <section className="card">
-        <div className="row">
-          <h2>Recent runs</h2>
-          <select
-            value={recentLimit}
-            onChange={(e) =>
-              setRecentLimit(e.target.value === "all" ? "all" : Number(e.target.value))
-            }
-          >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-            <option value="all">all</option>
-          </select>
-        </div>
-        <div className="table table-scroll">
-          <div className="row header">
-            <span>Time</span>
-            <span>Model</span>
-            <span>Batch</span>
-            <span>Max len</span>
-            <span>Max rows</span>
-            <span>Processed</span>
-            <span>Failed</span>
-            <span>Runtime (s)</span>
-          </div>
-          {filteredRuns
-            .slice()
-            .reverse()
-            .slice(0, recentLimit === "all" ? undefined : recentLimit)
-            .map((run, idx) => (
-              <div className="row" key={`${run.timestamp}-${idx}`}>
-                <span className="mono">{formatShortTimestamp(run.timestamp)}</span>
-                <span className="mono">{run.model_name}</span>
-                <span>{run.batch_size}</span>
-                <span>{run.max_len}</span>
-                <span>{run.max_rows ?? "∞"}</span>
-                <span>{run.processed}</span>
-                <span>{run.failed}</span>
-                <span>{run.runtime_s}</span>
-              </div>
-            ))}
-        </div>
-      </section>
+      <RecentRunsCard
+        recentLimit={recentLimit}
+        setRecentLimit={setRecentLimit}
+        filteredRuns={filteredRuns}
+        formatShortTimestamp={formatShortTimestamp}
+      />
 
+      <PredictionsCard
+        datasetFilter={datasetFilter}
+        predLimit={predLimit}
+        setPredLimit={setPredLimit}
+        predSort={predSort}
+        setPredSort={setPredSort}
+        predictions={predictions}
+        predictionKeys={predictionKeys}
+        predictionsToShow={predictionsToShow}
+        sentimentClass={sentimentClass}
+      />
 
-      <section className="card">
-        <div className="row">
-          <h2>Predictions (latest)</h2>
-          <span className="mono">
-            {datasetFilter === "all" ? "All datasets" : datasetFilter}
-          </span>
-          <div className="control-group">
-            <select
-              value={predLimit}
-              onChange={(e) =>
-                setPredLimit(e.target.value === "all" ? "all" : Number(e.target.value))
-              }
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value="all">all</option>
-            </select>
-            <select value={predSort} onChange={(e) => setPredSort(e.target.value as typeof predSort)}>
-              <option value="none">Original order</option>
-              <option value="desc">Score: high → low</option>
-              <option value="asc">Score: low → high</option>
-            </select>
-          </div>
-        </div>
-        {predictions.length === 0 ? (
-          <p className="muted">No predictions yet.</p>
-        ) : (
-          <div className="table table-scroll">
-            <div className="row header">
-              {predictionKeys.map((key) => (
-                <span key={key}>{key}</span>
-              ))}
-            </div>
-            {predictionsToShow.map((row, idx) => (
-              <div className="row" key={`pred-${idx}`}>
-                {predictionKeys.map((key, i) => {
-                  const value = row[key] ?? "";
-                  const label = String(row["label"] ?? "");
-                  const scoreNum = Number(row["score"] ?? 0);
-                  const scorePercent = Number.isFinite(scoreNum)
-                    ? Math.round(scoreNum * 100)
-                    : 0;
-                  const scoreClass = sentimentClass(label);
-
-                  if (key.toLowerCase() === "label") {
-                    return (
-                      <span key={`${idx}-${i}`} className="mini-sentiment">
-                        <span className={scoreClass}>{value}</span>
-                        <span className="mini-track">
-                          <span
-                            className={`mini-fill ${scoreClass}`}
-                            style={{ width: `${scorePercent}%` }}
-                          />
-                        </span>
-                      </span>
-                    );
-                  }
-                  if (key.toLowerCase() === "score") {
-                    return (
-                      <span key={`${idx}-${i}`} className="score-cell">
-                        <span className={scoreClass}>{value}</span>
-                        <span className="score-bar">
-                          <span
-                            className={`score-fill ${scoreClass}`}
-                            style={{ width: `${scorePercent}%` }}
-                          />
-                        </span>
-                      </span>
-                    );
-                  }
-                  return (
-                    <span key={`${idx}-${i}`} className="mono">
-                      {value}
-                    </span>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-      
-      <section className="card">
-        <div className="row">
-          <h2>Summary</h2>
-          <span className="mono">
-            {datasetFilter === "all" ? "All datasets" : datasetFilter}
-          </span>
-          <select
-            value={summaryLimit}
-            onChange={(e) =>
-              setSummaryLimit(e.target.value === "all" ? "all" : Number(e.target.value))
-            }
-          >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-            <option value="all">all</option>
-          </select>
-        </div>
-        {!summary && <p className="muted">No summary available yet.</p>}
-        {summary && (
-          <>
-            <div className="table summary-table table-scroll">
-              <div className="row header">
-                <span>Product</span>
-                <span>Total</span>
-                <span className="text-positive">Positive</span>
-                <span className="text-negative">Negative</span>
-                <span className="text-average">Avg score</span>
-              </div>
-              {summaryGroups.map((group) => (
-                <div className="row" key={group.group}>
-                  <span className="mono">{group.group}</span>
-                  <span>{group.total}</span>
-                  <span className="text-positive">{group.positive}</span>
-                  <span className="text-negative">{group.negative}</span>
-                  <span className="mini-sentiment">
-                    <span className="text-average">{group.avg_score}</span>
-                    <span className="mini-track">
-                      <span
-                        className="mini-fill"
-                        style={{
-                          width: `${Math.min(100, Math.max(0, group.avg_score * 100))}%`,
-                        }}
-                      />
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </section>
-
+      <SummaryCard
+        datasetFilter={datasetFilter}
+        summary={summary}
+        summaryLimit={summaryLimit}
+        setSummaryLimit={setSummaryLimit}
+        summaryGroups={summaryGroups}
+      />
     </div>
   );
 }
