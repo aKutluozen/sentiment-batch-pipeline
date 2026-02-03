@@ -1,0 +1,41 @@
+{
+  "dataset_type": "laptops_dataset_final_600",
+  "group_col": "product_name",
+  "groups": [
+    {
+      "group": "Apple MacBook AIR Apple M2 - (8 GB/256 GB SSD/Mac OS Monterey)...",
+      "total": 300,
+      "positive": 297,
+      "negative": 3,
+      "avg_score": 0.999144
+    },
+    {
+      "group": "DELL Inspiron 3520 Intel Core i3 12th Gen 1215U - (8 GB/512 GB...",
+      "total": 101,
+      "positive": 94,
+      "negative": 7,
+      "avg_score": 0.999105
+    },
+    {
+      "group": "Lenovo Chromebook MediaTek Kompanio 520 - (4 GB/128 GB EMMC St...",
+      "total": 42,
+      "positive": 35,
+      "negative": 7,
+      "avg_score": 0.999586
+    },
+    {
+      "group": "HP Backlit Intel Core i5 12th Gen 1235U - (8 GB/512 GB SSD/Win...",
+      "total": 30,
+      "positive": 30,
+      "negative": 0,
+      "avg_score": 0.9971
+    },
+    {
+      "group": "SAMSUNG Galaxy Book4 Metal Intel Core i3 13th Gen 1315U - (8 G...",
+      "total": 27,
+      "positive": 27,
+      "negative": 0,
+      "avg_score": 0.997826
+    }
+  ]
+}
