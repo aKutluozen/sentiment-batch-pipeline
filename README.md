@@ -3,12 +3,26 @@
 Batch inference pipeline for CSV sentiment analysis with optional dashboard UI, metrics, and group summaries.
 
 ## Features
-- Batch inference with configurable `BATCH_SIZE`, `MAX_LEN`, `MAX_ROWS`
-- CSV header or headerless mode
+- Batch inference with tunable `BATCH_SIZE`, `MAX_LEN`, and optional `MAX_ROWS`
+- CSV header or headerless parsing
 - Optional group summaries by column index
-- Prometheus metrics + live JSON metrics
+- Prometheus metrics plus live JSON metrics
 - Dashboard UI for uploads, runs, and analysis
-- Dockerized + CI/CD to GHCR
+- Dockerized build with CI/CD to GHCR
+
+## How does it work?
+The full application has three layers:
+1. Batch pipeline (headless): reads a CSV plus parameters and writes predictions, summaries, and metrics.
+2. API layer: exposes the pipeline over HTTP so runs can be started, monitored, and queried.
+3. UI layer (React/TypeScript): provides uploads, run controls, and visual analysis.
+Data flow: input CSV → predictions + group summary + live metrics.
+
+Full picture (end-to-end):
+- Input + params: CSV upload or file path + settings (mode, columns, batch size, max length, max rows).
+- Processing: tokenization + model inference across batches.
+- Outputs (files): `output/predictions.csv`, `output/predictions_group_summary.{json|csv}`, `output/live_metrics.json`, `output/run_history.jsonl`, `output/run_logs/`.
+- Serving: the API exposes run status, logs, predictions, and summaries.
+- UI: dashboard starts runs, monitors progress, and visualizes results.
 
 ## Prerequisites
 - Docker (required)
