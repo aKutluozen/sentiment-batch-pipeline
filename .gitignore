@@ -15,7 +15,7 @@ __pycache__/
 
 # Outputs
 output/*
-!output/predictions*
+!output/predictions.csv
 *.log
 
 # OS

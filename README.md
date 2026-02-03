@@ -23,9 +23,32 @@ Full picture (end-to-end):
 - Serving: the API exposes run status, logs, predictions, and summaries.
 - UI: dashboard starts runs, monitors progress, metrics, and visualizes results.
 
-Before uploading a CSV, take a minute to identify the text column you want to analyze and, if needed, the 0‑based column index you want to group results by. This is kept manual on purpose so you have a chance to review the file structure before proceeding.
+## Architecture at a glance
+```
+CSV file
+  ↓
+Batch pipeline (tokenize + infer)
+  ↓
+Outputs + live metrics  →  Dashboard API  →  Web UI
+```
 
-## Tested with datasets
+## Design choices
+- **Explicit column selection**: No inference for text/group columns to avoid accidental misreads and keep runs predictable.
+- **Header vs headerless**: Separate modes so users can pick by name or index with clear validation.
+- **Batching controls**: `BATCH_SIZE`, `MAX_LEN`, and `MAX_ROWS` are configurable to balance speed and memory.
+- **Observability**: Live JSON for the UI and optional Prometheus metrics for headless runs.
+- **Artifacts on disk**: Outputs are written to `output/` for repeatability and easy inspection.
+
+## What I would improve next
+- **Streaming runs**: Start processing as soon as data is uploaded for faster feedback.
+- **Caching**: Reuse tokenized batches or model outputs when parameters are unchanged.
+- **Dataset profiling**: Auto-scan columns and suggest candidates for text/group columns.
+- **Multiple concurrent jobs**: Support running and tracking multiple jobs in parallel.
+- **One-click demo deploy**: Publish a hosted demo so others can try it quickly.
+
+## How to use
+### Step 1. Prerequisites
+Have a dataset ready. The application has been tested with the following datasets:
 - [Sentiment140 (Kaggle)](https://www.kaggle.com/datasets/kazanova/sentiment140)
 - [Amazon Fine Food Reviews (Kaggle)](https://www.kaggle.com/datasets/snap/amazon-fine-food-reviews?resource=download)
 - [Rotten Tomatoes Movies and Reviews (Kaggle)](https://www.kaggle.com/datasets/andrezaza/clapper-massive-rotten-tomatoes-movies-and-reviews/data)
@@ -33,22 +56,24 @@ Before uploading a CSV, take a minute to identify the text column you want to an
 - [Sentiment Analysis Dataset (Kaggle)](https://www.kaggle.com/datasets/abhi8923shriv/sentiment-analysis-dataset)
 - [Flipkart Laptop Reviews (Kaggle)](https://www.kaggle.com/datasets/gitadityamaddali/flipkart-laptop-reviews)
 
-## Prerequisites
+Tools:
 - Docker (required)
 - Make (optional; bash scripts work without it)
 
-## Quick start
-Pull, test, and run locally:
+### Step 2. Quick start
+Pull the repo, run tests, and start locally:
 ```bash
 git clone https://github.com/akutluozen/sentiment-batch-pipeline.git
 cd sentiment-batch-pipeline
 make test-docker
 make run-full
 ```
-Open http://localhost:8001 to analyze runs and metrics.
+Open http://localhost:8001.
+Once the UI loads, you can start using the tool!
 
-## How to use
-Use the dashboard to upload a CSV, set parameters, and monitor progress:
+### Step 3. Run a job
+Use the dashboard to upload a CSV, set parameters, and monitor progress.
+Before uploading a CSV, take a minute to identify the text column you want to analyze and, if needed, the 0‑based column index you want to group results by. This is kept manual on purpose so you can quickly review the file structure before proceeding.
 
 ![Run a job: upload CSV, tune params, monitor progress](docs/runner.png)
 
