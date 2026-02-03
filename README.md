@@ -127,6 +127,21 @@ docker pull ghcr.io/akutluozen/sentiment-batch-pipeline-dashboard:latest
 ```
 Choose one of the options below depending on what you want to run.
 
+### Dockerfiles (repo)
+- `Dockerfile`: batch pipeline (headless)
+- `Dockerfile.dashboard`: dashboard UI + API
+
+### Run in Docker (copy/paste)
+```bash
+docker build -t iqrush .
+docker run --rm -v "$PWD:/app" -e INPUT_CSV=/app/data/test-set.csv -e TEXT_COL=text iqrush
+```
+
+```bash
+docker build -f Dockerfile.dashboard -t iqrush-dashboard .
+docker run --rm -p 8001:8001 -v "$PWD/output:/output" iqrush-dashboard
+```
+
 ### Full experience (both images)
 Run the batch pipeline and dashboard together using Docker. Save this as `docker-compose.yml` (or `docker-compose.yaml`):
 ```yaml
