@@ -3,7 +3,7 @@
 Batch inference pipeline for CSV sentiment analysis with optional dashboard UI, metrics, and group summaries.
 
 ## Features
-- Batch inference with tunable `BATCH_SIZE`, `MAX_LEN`, and optional `MAX_ROWS`
+- Batch inference with tunable parameters (batch size, token length, model name, max rows, etc.)
 - CSV header or headerless parsing with robust sanitization and validation
 - Optional group summaries by column index
 - Prometheus metrics and live JSON metrics
@@ -16,14 +16,14 @@ The full application has three layers:
 2. API layer: exposes the pipeline over HTTP so runs can be started, monitored, and queried.
 3. UI layer (React/TypeScript): provides uploads, run controls, and visual analysis.
 
-Data flow: input CSV to predictions, group summary, and live metrics.
-
 Full picture (end-to-end):
 - Input and parameters: CSV upload or file path with settings (mode, columns, batch size, max length, max rows).
 - Processing: tokenization and model inference across batches.
 - Outputs (files): `output/predictions.csv`, `output/predictions_group_summary.{json|csv}`, `output/live_metrics.json`, `output/run_history.jsonl`, `output/run_logs/`.
 - Serving: the API exposes run status, logs, predictions, and summaries.
-- UI: dashboard starts runs, monitors progress, and visualizes results.
+- UI: dashboard starts runs, monitors progress, metrics, and visualizes results.
+
+Before uploading a CSV, take a minute to identify the text column you want to analyze and, if needed, the 0‑based column index you want to group results by. This is kept manual on purpose so you have a chance to review the file structure before proceeding.
 
 ## Tested with datasets
 - [Sentiment140 (Kaggle)](https://www.kaggle.com/datasets/kazanova/sentiment140)
@@ -46,6 +46,20 @@ make test-docker
 make run-full
 ```
 Open http://localhost:8001 to analyze runs and metrics.
+
+## How to use
+Use the dashboard to upload a CSV, set parameters, and monitor progress:
+
+![Run a job: upload CSV, tune params, monitor progress](docs/runner.png)
+
+You can then analyze results by dataset, model, and run settings using charts and tables:
+
+<table>
+  <tr>
+    <td><img src="docs/charts.png" alt="Charts view" width="100%" /></td>
+    <td><img src="docs/tables.png" alt="Tables view" width="100%" /></td>
+  </tr>
+</table>
 
 ## Run from source
 ### Headless (batch inference)
@@ -89,7 +103,7 @@ docker pull ghcr.io/akutluozen/sentiment-batch-pipeline-dashboard:latest
 Choose one of the options below depending on what you want to run.
 
 ### Full experience (both images)
-Run the batch pipeline and dashboard together using Docker:
+Run the batch pipeline and dashboard together using Docker. Save this as `docker-compose.yml` (or `docker-compose.yaml`):
 ```yaml
 services:
   pipeline:
@@ -148,6 +162,8 @@ Common overrides (env vars):
 - `MAX_ROWS=10000`
 - `METRICS_PORT=8000`
 
+If `METRICS_PORT` is set, the headless container exposes Prometheus metrics at `http://localhost:<METRICS_PORT>/metrics`.
+
 Examples:
 ```bash
 CSV_MODE=headerless TEXT_COL_INDEX=2 INPUT_CSV=data/test-set.csv make run-headless
@@ -192,3 +208,6 @@ make test-docker
 - `make clean-cache`    Remove hf_cache Docker volume
 - `make clean-artifacts` Remove output artifacts (runs, logs, uploads)
 - `make clean-all`      Clean docker, cache, and artifacts
+
+## Warnings
+- Some cleanup commands (especially `make clean-artifacts`) may require elevated permissions depending on how files were created. If you see permission errors, rerun with `sudo`.
