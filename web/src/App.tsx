@@ -45,13 +45,13 @@ const defaultParams: RunParams = {
   csv_mode: "header",
   output_csv: "output/predictions.csv",
   text_col: "Text",
-  text_col_index: "",
-  group_col_index: "",
+  text_col_index: null,
+  group_col_index: null,
   model_name: "distilbert-base-uncased-finetuned-sst-2-english",
-  batch_size: 32,
+  batch_size: 128,
   max_len: 256,
-  max_rows: "",
-  metrics_port: "",
+  max_rows: 500,
+  metrics_port: null,
 };
 
 const chartTextColor = "#9aa1d8";
@@ -407,25 +407,25 @@ export default function App() {
       }
       formData.append("csv_mode", params.csv_mode);
       if (params.csv_mode === "headerless") {
-        if (params.text_col_index.trim()) {
-          formData.append("text_col_index", params.text_col_index.trim());
+        if (typeof params.text_col_index === "number" && Number.isFinite(params.text_col_index)) {
+          formData.append("text_col_index", String(params.text_col_index));
         }
       } else if (params.text_col.trim()) {
         formData.append("text_col", params.text_col.trim());
       }
-      if (params.group_col_index.trim()) {
-        formData.append("group_col_index", params.group_col_index.trim());
+      if (typeof params.group_col_index === "number" && Number.isFinite(params.group_col_index)) {
+        formData.append("group_col_index", String(params.group_col_index));
       }
       if (params.model_name.trim()) {
         formData.append("model_name", params.model_name.trim());
       }
       formData.append("batch_size", String(params.batch_size));
       formData.append("max_len", String(params.max_len));
-      if (params.max_rows.trim()) {
-        formData.append("max_rows", params.max_rows.trim());
+      if (params.max_rows > 0) {
+        formData.append("max_rows", String(params.max_rows));
       }
-      if (params.metrics_port.trim()) {
-        formData.append("metrics_port", params.metrics_port.trim());
+      if (typeof params.metrics_port === "number" && Number.isFinite(params.metrics_port)) {
+        formData.append("metrics_port", String(params.metrics_port));
       }
 
       const response = await startRun(formData);

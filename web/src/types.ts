@@ -2,13 +2,13 @@ export type RunParams = {
   csv_mode: "header" | "headerless";
   output_csv: string;
   text_col: string;
-  text_col_index: string;
-  group_col_index: string;
+  text_col_index: number | null;
+  group_col_index: number | null;
   model_name: string;
   batch_size: number;
   max_len: number;
-  max_rows: string;
-  metrics_port: string;
+  max_rows: number;
+  metrics_port: number | null;
 };
 
 export type GroupedScoreRow = {

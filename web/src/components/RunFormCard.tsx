@@ -70,9 +70,13 @@ export default function RunFormCard({
               Column index (0-based)
               <input
                 type="number"
-                value={params.text_col_index}
+                value={params.text_col_index ?? ""}
                 onChange={(e) =>
-                  setParams({ ...params, text_col_index: e.target.value })
+                  setParams({
+                    ...params,
+                    text_col_index:
+                      e.target.value === "" ? null : Number(e.target.value),
+                  })
                 }
               />
             </label>
@@ -89,8 +93,15 @@ export default function RunFormCard({
         <label>
           Group column index (optional)
           <input
-            value={params.group_col_index}
-            onChange={(e) => setParams({ ...params, group_col_index: e.target.value })}
+            type="number"
+            value={params.group_col_index ?? ""}
+            onChange={(e) =>
+              setParams({
+                ...params,
+                group_col_index:
+                  e.target.value === "" ? null : Number(e.target.value),
+              })
+            }
             placeholder="e.g., 0"
           />
         </label>
@@ -151,7 +162,9 @@ export default function RunFormCard({
             <input
               type="number"
               value={params.max_rows}
-              onChange={(e) => setParams({ ...params, max_rows: e.target.value })}
+              onChange={(e) =>
+                setParams({ ...params, max_rows: Number(e.target.value) || 0 })
+              }
             />
           </label>
         </div>
@@ -159,8 +172,14 @@ export default function RunFormCard({
           Metrics port (optional)
           <input
             type="number"
-            value={params.metrics_port}
-            onChange={(e) => setParams({ ...params, metrics_port: e.target.value })}
+            value={params.metrics_port ?? ""}
+            onChange={(e) =>
+              setParams({
+                ...params,
+                metrics_port:
+                  e.target.value === "" ? null : Number(e.target.value),
+              })
+            }
           />
         </label>
         {formError && <p className="error">{formError}</p>}

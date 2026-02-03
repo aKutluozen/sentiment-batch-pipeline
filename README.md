@@ -22,11 +22,68 @@ make run-full
 ```
 Open http://localhost:8001
 
+## Full experience (both images)
+Run the batch pipeline and dashboard together using Docker:
+```bash
+docker pull ghcr.io/akutluozen/sentiment-batch-pipeline:latest
+docker pull ghcr.io/akutluozen/sentiment-batch-pipeline-dashboard:latest
+```
+
+Create a minimal `docker-compose.yml`:
+```yaml
+services:
+  pipeline:
+    image: ghcr.io/akutluozen/sentiment-batch-pipeline:latest
+    volumes:
+      - ./data:/data
+      - ./output:/output
+    environment:
+      INPUT_CSV: /data/Reviews.csv
+      OUTPUT_CSV: /output/predictions.csv
+      MAX_ROWS: 500
+      BATCH_SIZE: 128
+  dashboard:
+    image: ghcr.io/akutluozen/sentiment-batch-pipeline-dashboard:latest
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./output:/app/output
+```
+
+Then run:
+```bash
+docker compose up
+```
+Open http://localhost:8001
+
 ## Docker (GHCR)
 Pull the latest build:
 ```bash
 docker pull ghcr.io/akutluozen/sentiment-batch-pipeline:latest
 ```
+Then you can run a quick test like
+```bash
+docker run --rm \
+  -v "$PWD/data:/data" \
+  -v "$PWD/output:/output" \
+  -e INPUT_CSV=/data/Reviews.csv \
+  -e OUTPUT_CSV=/output/predictions.csv \
+	-e MAX_ROWS=500 \
+	-e BATCH_SIZE=128 \
+  ghcr.io/akutluozen/sentiment-batch-pipeline:latest
+```
+
+Pull the dashboard (UI + API) image:
+```bash
+docker pull ghcr.io/akutluozen/sentiment-batch-pipeline-dashboard:latest
+```
+Run the dashboard locally:
+```bash
+docker run --rm -p 8001:8001 \
+  -v "$PWD/output:/app/output" \
+  ghcr.io/akutluozen/sentiment-batch-pipeline-dashboard:latest
+```
+Open http://localhost:8001
 
 ## Configuration
 Common overrides (env vars):

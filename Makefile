@@ -1,4 +1,4 @@
-.PHONY: help headless dashboard run-full test test-docker clean-docker clean-cache clean-artifacts clean-all
+.PHONY: help headless dashboard test test-docker clean-docker clean-cache clean-artifacts clean-all
 
 VENV_PY := $(wildcard .venv/bin/python)
 ifeq ($(VENV_PY),)
@@ -10,8 +10,7 @@ endif
 help:
 	@echo "Targets:"
 	@echo "  headless       Run batch inference (no UI)"
-	@echo "  dashboard      Run dashboard (alias for run-full)"
-	@echo "  run-full       Run dashboard (single container)"
+	@echo "  dashboard      Run dashboard (single container)"
 	@echo "  test           Run pytest locally"
 	@echo "  test-docker    Run pytest in Docker"
 	@echo "  clean-docker   Stop/remove all Docker containers"
@@ -21,9 +20,6 @@ help:
 
 run-headless:
 	@./run.sh
-
-
-dashboard: run-full
 
 run-full:
 	@docker build -f Dockerfile.dashboard -t iqrush-dashboard .

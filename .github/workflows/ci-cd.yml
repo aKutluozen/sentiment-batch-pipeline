@@ -57,6 +57,9 @@ jobs:
       - name: Set image name (lowercase)
         run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
+      - name: Set dashboard image name (lowercase)
+        run: echo "DASHBOARD_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-dashboard" >> $GITHUB_ENV
+
       - name: Build and push (multi-arch)
         uses: docker/build-push-action@v5
         with:
@@ -69,3 +72,16 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Build and push dashboard (multi-arch)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.dashboard
+          push: true
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            ${{ env.DASHBOARD_IMAGE }}:latest
+            ${{ env.DASHBOARD_IMAGE }}:${{ github.sha }}
