@@ -22,6 +22,11 @@ Dashboard features
 - Predictions table
 - Grouped summary by detected dataset type (e.g., ProductId or user)
 
+Docker image (GHCR)
+```
+docker pull ghcr.io/akutluozen/sentiment-batch-pipeline:latest
+```
+
 Extras
 - Generate plots: `make visualize`
 - Clean artifacts: `make clean-artifacts`
