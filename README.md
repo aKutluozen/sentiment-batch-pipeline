@@ -10,6 +10,14 @@ Batch inference pipeline for CSV sentiment analysis with optional dashboard UI, 
 - Dashboard UI for uploads, runs, and analysis
 - Dockerized build with CI/CD to GHCR
 
+## Tested with datasets
+- [Sentiment140 (Kaggle)](https://www.kaggle.com/datasets/kazanova/sentiment140)
+- [Amazon Fine Food Reviews (Kaggle)](https://www.kaggle.com/datasets/snap/amazon-fine-food-reviews?resource=download)
+- [Rotten Tomatoes Movies and Reviews (Kaggle)](https://www.kaggle.com/datasets/andrezaza/clapper-massive-rotten-tomatoes-movies-and-reviews/data)
+- [Twitter Airline Sentiment (Kaggle)](https://www.kaggle.com/datasets/crowdflower/twitter-airline-sentiment)
+- [Sentiment Analysis Dataset (Kaggle)](https://www.kaggle.com/datasets/abhi8923shriv/sentiment-analysis-dataset)
+- [Flipkart Laptop Reviews (Kaggle)](https://www.kaggle.com/datasets/gitadityamaddali/flipkart-laptop-reviews)
+
 ## How does it work?
 The full application has three layers:
 1. Batch pipeline (headless): reads a CSV plus parameters and writes predictions, summaries, and metrics.
@@ -139,9 +147,20 @@ Common overrides (env vars):
 
 Examples:
 ```bash
-CSV_MODE=headerless TEXT_COL_INDEX=2 make headless INPUT_CSV=data/input.csv
-GROUP_COL_INDEX=1 make headless INPUT_CSV=data/input.csv
-METRICS_PORT=8000 make headless INPUT_CSV=data/Reviews.csv
+CSV_MODE=headerless TEXT_COL_INDEX=2 INPUT_CSV=data/input.csv make headless
+
+GROUP_COL_INDEX=1 INPUT_CSV=data/input.csv make headless
+
+METRICS_PORT=8000 INPUT_CSV=data/Reviews.csv make headless
+```
+
+Bash script equivalents:
+```bash
+CSV_MODE=headerless TEXT_COL_INDEX=2 INPUT_CSV=data/input.csv ./run.sh headless
+
+GROUP_COL_INDEX=1 INPUT_CSV=data/input.csv ./run.sh headless
+
+METRICS_PORT=8000 INPUT_CSV=data/Reviews.csv ./run.sh headless
 ```
 
 ## Outputs

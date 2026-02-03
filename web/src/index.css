@@ -170,41 +170,22 @@ body {
   border-radius: 12px;
   padding: 12px;
   border: 1px solid rgba(60, 66, 130, 0.6);
+  height: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.heatmap {
-  display: grid;
-  gap: 6px;
-  font-size: 12px;
-  overflow-x: auto;
+.chart h3 {
+  margin: 0;
+  font-size: 16px;
 }
 
-.heatmap-row {
-  display: grid;
-  grid-template-columns: repeat(var(--heatmap-cols), minmax(70px, 1fr));
-  gap: 6px;
-  align-items: center;
-}
-
-.heatmap-header {
-  font-weight: 600;
-  color: #c7ccff;
-}
-
-.heatmap-label {
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: rgba(11, 13, 28, 0.6);
-  border: 1px solid rgba(60, 66, 130, 0.4);
-  text-align: center;
-}
-
-.heatmap-cell {
-  padding: 6px 8px;
-  border-radius: 8px;
-  text-align: center;
-  border: 1px solid rgba(60, 66, 130, 0.35);
-  color: #f2f4ff;
+.chart canvas {
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .table {
@@ -368,8 +349,8 @@ button.secondary {
   background: rgba(11, 13, 28, 0.8);
   border: 1px solid rgba(60, 66, 130, 0.6);
   border-radius: 12px;
-  height: 80%;
-  max-height: 450px;
+  height: 90%;
+  max-height: 530px;
   overflow: auto;
   word-break: break-word;
 }

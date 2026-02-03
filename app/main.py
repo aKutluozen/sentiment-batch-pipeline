@@ -79,37 +79,70 @@ def main() -> int:
 
     try:
         # Stream rows instead of reading all into memory
-        with settings.input_csv.open("r", newline="", encoding="utf-8") as f_in:
-            # Process CSV
-            processed = process_csv(f_in, settings)
-            if processed is None:
-                return 2
-            reader, fieldnames, text_col = processed
+        text_col: str | None = None
+        dataset_type: str | None = None
+        group_col: str | None = None
 
-            # Prepare the output CSV
-            headers_list = list(fieldnames)
-            headers_set = set(fieldnames)
-            dataset_type = dataset_name_from_path(settings.input_csv)
-            group_col = None if settings.group_col_index is None else headers_list[
-                settings.group_col_index]
-            out_headers = [text_col, "label", "score", "error"]
+        # Testing with different files required different encodings
+        def run_with_encoding(encoding: str) -> int | None:
+            nonlocal text_col, dataset_type, group_col
+            with settings.input_csv.open("r", newline="", encoding=encoding) as f_in:
+                processed = process_csv(f_in, settings)
+                if processed is None:
+                    return 2
+                reader, fieldnames, text_col = processed
 
-            with settings.output_csv.open("w", newline="", encoding="utf-8") as f_out:
-                writer = csv.DictWriter(f_out, fieldnames=out_headers)
-                writer.writeheader()
+                # Prepare the output CSV
+                headers_list = list(fieldnames)
+                headers_set = set(fieldnames)
+                dataset_type = dataset_name_from_path(settings.input_csv)
+                group_col = None if settings.group_col_index is None else headers_list[
+                    settings.group_col_index]
+                out_headers = [text_col, "label", "score", "error"]
 
-                batch: List[Dict[str, str]] = []
+                with settings.output_csv.open("w", newline="", encoding="utf-8") as f_out:
+                    writer = csv.DictWriter(f_out, fieldnames=out_headers)
+                    writer.writeheader()
 
-                # Process rows in batches
-                for r in reader:
-                    stats.rows_seen += 1
-                    if settings.max_rows is not None and stats.rows_seen > settings.max_rows:
-                        logger.info("Row limit reached", extra={
-                                    "max_rows": settings.max_rows})
-                        break
-                    batch.append(r)
-                    # Once we have enough for a batch, process it
-                    if len(batch) >= settings.batch_size:
+                    batch: List[Dict[str, str]] = []
+
+                    # Process rows in batches
+                    for r in reader:
+                        stats.rows_seen += 1
+                        if settings.max_rows is not None and stats.rows_seen > settings.max_rows:
+                            logger.info("Row limit reached", extra={
+                                        "max_rows": settings.max_rows})
+                            break
+                        batch.append(r)
+                        # Once we have enough for a batch, process it
+                        if len(batch) >= settings.batch_size:
+                            process_batch(
+                                batch,
+                                nlp=nlp,
+                                predict_fn=predict_batch,
+                                writer=writer,
+                                metrics=metrics,
+                                settings=settings,
+                                stats=stats,
+                                text_col=text_col,
+                                headers=headers_set,
+                                group_col=group_col,
+                                group_stats=group_stats,
+                                dataset_type=dataset_type,
+                                start=start,
+                            )
+                            logger.info(
+                                "Batch complete",
+                                extra={
+                                    "rows_seen": stats.rows_seen,
+                                    "processed": stats.processed,
+                                    "failed": stats.failed,
+                                },
+                            )
+                            batch = []
+
+                    # Process any remaining rows in the last batch
+                    if batch:
                         process_batch(
                             batch,
                             nlp=nlp,
@@ -125,33 +158,20 @@ def main() -> int:
                             dataset_type=dataset_type,
                             start=start,
                         )
-                        logger.info(
-                            "Batch complete",
-                            extra={
-                                "rows_seen": stats.rows_seen,
-                                "processed": stats.processed,
-                                "failed": stats.failed,
-                            },
-                        )
-                        batch = []
+            return None
 
-                # Process any remaining rows in the last batch
-                if batch:
-                    process_batch(
-                        batch,
-                        nlp=nlp,
-                        predict_fn=predict_batch,
-                        writer=writer,
-                        metrics=metrics,
-                        settings=settings,
-                        stats=stats,
-                        text_col=text_col,
-                        headers=headers_set,
-                        group_col=group_col,
-                        group_stats=group_stats,
-                        dataset_type=dataset_type,
-                        start=start,
-                    )
+        result = None
+        try:
+            result = run_with_encoding("utf-8")
+        except UnicodeDecodeError:
+            logger.warning(
+                "UTF-8 decode failed; retrying with latin-1",
+                extra={"input_csv": str(settings.input_csv)},
+            )
+            result = run_with_encoding("latin-1")
+
+        if result is not None:
+            return result
     except Exception:
         logger.exception("Unhandled error during processing")
         return 1

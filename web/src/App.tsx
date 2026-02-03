@@ -16,6 +16,7 @@ import DatasetFilterCard from "./components/DatasetFilterCard";
 import PredictionsCard from "./components/PredictionsCard";
 import RecentRunsCard from "./components/RecentRunsCard";
 import RunComparisonsCard from "./components/RunComparisonsCard";
+import RunComparisonTableCard from "./components/RunComparisonTableCard";
 import RunFormCard from "./components/RunFormCard";
 import RunHistoryCard from "./components/RunHistoryCard";
 import RunLogsCard from "./components/RunLogsCard";
@@ -233,6 +234,8 @@ export default function App() {
         datasetFilter={datasetFilter}
         filteredRuns={filteredRuns}
       />
+
+      <RunComparisonTableCard filteredRuns={filteredRuns} />
 
       <RecentRunsCard
         recentLimit={recentLimit}

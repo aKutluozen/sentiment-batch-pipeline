@@ -1,0 +1,7 @@
+group,total,positive,negative,avg_score
+United,3822,1189,2633,0.917172
+US Airways,2913,650,2263,0.937569
+American,2759,799,1960,0.921312
+Southwest,2420,1234,1186,0.867899
+Delta,2222,1267,955,0.853749
+Virgin America,504,323,181,0.836032

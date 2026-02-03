@@ -13,6 +13,7 @@ export default function DatasetFilterCard({
     <section className="card">
       <div className="row">
         <h2>Analyze by Dataset</h2>
+        <span>{datasetFilter === "all" ? "All datasets" : datasetFilter}</span>
         <select value={datasetFilter} onChange={(e) => setDatasetFilter(e.target.value)}>
           {datasetOptions.map((dataset) => (
             <option key={dataset} value={dataset}>
