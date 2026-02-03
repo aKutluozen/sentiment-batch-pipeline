@@ -139,7 +139,7 @@ docker run --rm -v "$PWD:/app" -e INPUT_CSV=/app/data/test-set.csv -e TEXT_COL=t
 
 ```bash
 docker build -f Dockerfile.dashboard -t iqrush-dashboard .
-docker run --rm -p 8001:8001 -v "$PWD/output:/output" iqrush-dashboard
+docker run --rm -p 8001:8001 -v "$PWD/output:/app/output" iqrush-dashboard
 ```
 
 ### Full experience (both images)
@@ -179,8 +179,8 @@ docker run --rm \
   -e INPUT_CSV=/data/test-set.csv \
   -e TEXT_COL=text \
   -e OUTPUT_CSV=/output/predictions.csv \
-	-e MAX_ROWS=500 \
-	-e BATCH_SIZE=128 \
+  -e MAX_ROWS=500 \
+  -e BATCH_SIZE=128 \
   ghcr.io/akutluozen/sentiment-batch-pipeline:latest
 ```
 
