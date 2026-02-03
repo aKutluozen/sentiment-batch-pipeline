@@ -10,10 +10,28 @@ Batch inference pipeline for CSV sentiment analysis with optional dashboard UI, 
 - Dashboard UI for uploads, runs, and analysis
 - Dockerized + CI/CD to GHCR
 
-## Quick start (local)
+## Prerequisites
+- Docker (required)
+- Make (optional; bash scripts work without it)
+
+## Quick start
+Pull, test, and run locally:
+```bash
+git clone https://github.com/akutluozen/sentiment-batch-pipeline.git
+cd sentiment-batch-pipeline
+make test-docker
+make run-full
+```
+Open http://localhost:8001 to analyze runs and metrics.
+
+## Run from source
 ### Headless (batch inference)
 ```bash
 make headless INPUT_CSV=data/Reviews.csv
+```
+Run the full headless example with all fields populated:
+```bash
+make run-headless-example
 ```
 
 ### Full Dashboard (UI + API)
@@ -22,14 +40,33 @@ make run-full
 ```
 Open http://localhost:8001
 
-## Full experience (both images)
-Run the batch pipeline and dashboard together using Docker:
+### Without Makefile (bash scripts)
+```bash
+./run.sh
+```
+Run with common overrides:
+```bash
+INPUT_CSV=data/Reviews.csv BATCH_SIZE=128 MAX_ROWS=500 ./run.sh headless
+```
+Run the dashboard:
+```bash
+./run.sh dashboard
+```
+Cleanup (Docker containers, cache, artifacts):
+```bash
+./cleanup.sh --all
+```
+
+## Use prebuilt containers
+Pull the latest images from GHCR:
 ```bash
 docker pull ghcr.io/akutluozen/sentiment-batch-pipeline:latest
 docker pull ghcr.io/akutluozen/sentiment-batch-pipeline-dashboard:latest
 ```
+Choose one of the options below depending on what you want to run.
 
-Create a minimal `docker-compose.yml`:
+### Full experience (both images)
+Run the batch pipeline and dashboard together using Docker:
 ```yaml
 services:
   pipeline:
@@ -56,12 +93,7 @@ docker compose up
 ```
 Open http://localhost:8001
 
-## Docker (GHCR)
-Pull the latest build:
-```bash
-docker pull ghcr.io/akutluozen/sentiment-batch-pipeline:latest
-```
-Then you can run a quick test like
+### Batch-only quick test
 ```bash
 docker run --rm \
   -v "$PWD/data:/data" \
@@ -73,11 +105,7 @@ docker run --rm \
   ghcr.io/akutluozen/sentiment-batch-pipeline:latest
 ```
 
-Pull the dashboard (UI + API) image:
-```bash
-docker pull ghcr.io/akutluozen/sentiment-batch-pipeline-dashboard:latest
-```
-Run the dashboard locally:
+### Dashboard only
 ```bash
 docker run --rm -p 8001:8001 \
   -v "$PWD/output:/app/output" \
