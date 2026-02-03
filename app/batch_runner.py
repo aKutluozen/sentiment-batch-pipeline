@@ -7,16 +7,17 @@ from typing import Any, Dict, List
 from app.helpers import build_live_metrics_payload
 from app.run_tracking import RunStats, write_live_metrics_safe
 from app.summary import update_group_stats
+from app.config import Settings
 
 
-def flush_batch(
+def process_batch(
     batch_rows: List[Dict[str, str]],
     *,
     nlp,
     predict_fn,
     writer: csv.DictWriter,
     metrics,
-    s,
+    settings: Settings,
     stats: RunStats,
     text_col: str,
     headers: set[str],
@@ -52,9 +53,9 @@ def flush_batch(
     finally:
         metrics.observe_batch_duration(time.time() - batch_start)
         write_live_metrics_safe(
-            s.run_live_path,
+            settings.run_live_path,
             build_live_metrics_payload(
-                s,
+                settings,
                 status="running",
                 text_col=text_col,
                 rows_seen=stats.rows_seen,
