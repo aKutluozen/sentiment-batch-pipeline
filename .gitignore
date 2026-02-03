@@ -1,6 +1,7 @@
 # Inputs
 *.zip
 *.csv
+!data/test-set.csv
 
 # Node
 node_modules/

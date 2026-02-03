@@ -6,9 +6,24 @@ Batch inference pipeline for CSV sentiment analysis with optional dashboard UI, 
 - Batch inference with tunable `BATCH_SIZE`, `MAX_LEN`, and optional `MAX_ROWS`
 - CSV header or headerless parsing with robust sanitization and validation
 - Optional group summaries by column index
-- Prometheus metrics plus live JSON metrics
+- Prometheus metrics and live JSON metrics
 - Dashboard UI for uploads, runs, and analysis
 - Dockerized build with CI/CD to GHCR
+
+## How does it work?
+The full application has three layers:
+1. Batch pipeline (headless): reads a CSV and parameters and writes predictions, summaries, and metrics.
+2. API layer: exposes the pipeline over HTTP so runs can be started, monitored, and queried.
+3. UI layer (React/TypeScript): provides uploads, run controls, and visual analysis.
+
+Data flow: input CSV to predictions, group summary, and live metrics.
+
+Full picture (end-to-end):
+- Input and parameters: CSV upload or file path with settings (mode, columns, batch size, max length, max rows).
+- Processing: tokenization and model inference across batches.
+- Outputs (files): `output/predictions.csv`, `output/predictions_group_summary.{json|csv}`, `output/live_metrics.json`, `output/run_history.jsonl`, `output/run_logs/`.
+- Serving: the API exposes run status, logs, predictions, and summaries.
+- UI: dashboard starts runs, monitors progress, and visualizes results.
 
 ## Tested with datasets
 - [Sentiment140 (Kaggle)](https://www.kaggle.com/datasets/kazanova/sentiment140)
@@ -17,20 +32,6 @@ Batch inference pipeline for CSV sentiment analysis with optional dashboard UI, 
 - [Twitter Airline Sentiment (Kaggle)](https://www.kaggle.com/datasets/crowdflower/twitter-airline-sentiment)
 - [Sentiment Analysis Dataset (Kaggle)](https://www.kaggle.com/datasets/abhi8923shriv/sentiment-analysis-dataset)
 - [Flipkart Laptop Reviews (Kaggle)](https://www.kaggle.com/datasets/gitadityamaddali/flipkart-laptop-reviews)
-
-## How does it work?
-The full application has three layers:
-1. Batch pipeline (headless): reads a CSV plus parameters and writes predictions, summaries, and metrics.
-2. API layer: exposes the pipeline over HTTP so runs can be started, monitored, and queried.
-3. UI layer (React/TypeScript): provides uploads, run controls, and visual analysis.
-Data flow: input CSV → predictions + group summary + live metrics.
-
-Full picture (end-to-end):
-- Input + params: CSV upload or file path + settings (mode, columns, batch size, max length, max rows).
-- Processing: tokenization + model inference across batches.
-- Outputs (files): `output/predictions.csv`, `output/predictions_group_summary.{json|csv}`, `output/live_metrics.json`, `output/run_history.jsonl`, `output/run_logs/`.
-- Serving: the API exposes run status, logs, predictions, and summaries.
-- UI: dashboard starts runs, monitors progress, and visualizes results.
 
 ## Prerequisites
 - Docker (required)
@@ -49,14 +50,14 @@ Open http://localhost:8001 to analyze runs and metrics.
 ## Run from source
 ### Headless (batch inference)
 ```bash
-make run-headless INPUT_CSV=data/Reviews.csv
+make run-headless INPUT_CSV=data/test-set.csv
 ```
-Run the full headless example with all fields populated:
+Run the full headless example with all fields populated (uses `data/test-set.csv`):
 ```bash
 make run-example-headless
 ```
 
-### Full Dashboard (UI + API)
+### Full Dashboard (UI and API)
 ```bash
 make run-full
 ```
@@ -68,7 +69,7 @@ Open http://localhost:8001
 ```
 Run with common overrides:
 ```bash
-INPUT_CSV=data/Reviews.csv BATCH_SIZE=128 MAX_ROWS=500 ./run.sh headless
+INPUT_CSV=data/test-set.csv BATCH_SIZE=128 MAX_ROWS=500 ./run.sh headless
 ```
 Run the dashboard:
 ```bash
@@ -97,7 +98,7 @@ services:
       - ./data:/data
       - ./output:/output
     environment:
-      INPUT_CSV: /data/Reviews.csv
+      INPUT_CSV: /data/test-set.csv
       OUTPUT_CSV: /output/predictions.csv
       MAX_ROWS: 500
       BATCH_SIZE: 128
@@ -120,7 +121,7 @@ Open http://localhost:8001
 docker run --rm \
   -v "$PWD/data:/data" \
   -v "$PWD/output:/output" \
-  -e INPUT_CSV=/data/Reviews.csv \
+  -e INPUT_CSV=/data/test-set.csv \
   -e OUTPUT_CSV=/output/predictions.csv \
 	-e MAX_ROWS=500 \
 	-e BATCH_SIZE=128 \
@@ -151,7 +152,7 @@ CSV_MODE=headerless TEXT_COL_INDEX=2 INPUT_CSV=data/input.csv make run-headless
 
 GROUP_COL_INDEX=1 INPUT_CSV=data/input.csv make run-headless
 
-METRICS_PORT=8000 INPUT_CSV=data/Reviews.csv make run-headless
+METRICS_PORT=8000 INPUT_CSV=data/test-set.csv make run-headless
 ```
 
 Bash script equivalents:
@@ -160,7 +161,7 @@ CSV_MODE=headerless TEXT_COL_INDEX=2 INPUT_CSV=data/input.csv ./run.sh headless
 
 GROUP_COL_INDEX=1 INPUT_CSV=data/input.csv ./run.sh headless
 
-METRICS_PORT=8000 INPUT_CSV=data/Reviews.csv ./run.sh headless
+METRICS_PORT=8000 INPUT_CSV=data/test-set.csv ./run.sh headless
 ```
 
 ## Outputs
@@ -169,8 +170,9 @@ METRICS_PORT=8000 INPUT_CSV=data/Reviews.csv ./run.sh headless
 - Live metrics: `output/live_metrics.json`
 
 ## Tests
-Run locally:
+Run locally. Install Python dependencies first:
 ```bash
+pip install -r requirements.txt
 make test
 ```
 
@@ -187,4 +189,4 @@ make test-docker
 - `make clean-docker`   Stop/remove all Docker containers
 - `make clean-cache`    Remove hf_cache Docker volume
 - `make clean-artifacts` Remove output artifacts (runs, logs, uploads)
-- `make clean-all`      Clean docker + cache + artifacts
+- `make clean-all`      Clean docker, cache, and artifacts

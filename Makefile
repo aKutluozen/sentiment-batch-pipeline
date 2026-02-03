@@ -28,7 +28,7 @@ run-full:
 
 run-example-headless:
 	@env \
-	INPUT_CSV=data/Reviews.csv \
+	INPUT_CSV=data/test-set.csv \
 	BATCH_SIZE=128 MAX_ROWS=500 \
 	METRICS_PORT=8000 \
 	./run.sh
