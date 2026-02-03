@@ -3,11 +3,11 @@
 Batch inference pipeline for CSV sentiment analysis with optional dashboard UI, metrics, and group summaries.
 
 ## Features
-- Batch inference with configurable `BATCH_SIZE`
+- Batch inference with configurable `BATCH_SIZE`, `MAX_LEN`, `MAX_ROWS`
 - CSV header or headerless mode
 - Optional group summaries by column index
 - Prometheus metrics + live JSON metrics
-- Dashboard UI for uploads and runs
+- Dashboard UI for uploads, runs, and analysis
 - Dockerized + CI/CD to GHCR
 
 ## Quick start (local)
@@ -123,5 +123,7 @@ make test-docker
 - CD builds and pushes images to GHCR on `main`.
 
 ## Utilities
-- Generate plots: `make visualize`
-- Clean artifacts: `make clean-artifacts`
+- `make clean-docker`   Stop/remove all Docker containers
+- `make clean-cache`    Remove hf_cache Docker volume
+- `make clean-artifacts` Remove output artifacts (runs, logs, uploads)
+- `make clean-all`      Clean docker + cache + artifacts
