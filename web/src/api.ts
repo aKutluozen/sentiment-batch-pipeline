@@ -13,6 +13,9 @@ export type LiveSnapshot = {
   rows_seen: number;
   processed: number;
   failed: number;
+  skipped?: number;
+  invalid?: number;
+  error_samples?: string[];
   avg_score?: number;
   positive?: number;
   negative?: number;

@@ -23,6 +23,14 @@ export default function RunLogsCard({ runStatus, live, className }: RunLogsCardP
           <strong>{live?.failed ?? 0}</strong>
         </div>
         <div>
+          <span>Skipped</span>
+          <strong>{live?.skipped ?? 0}</strong>
+        </div>
+        <div>
+          <span>Invalid</span>
+          <strong>{live?.invalid ?? 0}</strong>
+        </div>
+        <div>
           <span>Rows seen</span>
           <strong>{live?.rows_seen ?? 0}</strong>
         </div>

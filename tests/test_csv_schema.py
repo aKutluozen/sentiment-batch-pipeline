@@ -47,6 +47,28 @@ def test_headerless_with_text_col_index_succeeds(
     assert len(results) == 2
 
 
+def test_missing_text_row_is_marked_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    input_path = tmp_path / "data" / "input.csv"
+    write_csv(input_path, rows=[["ok"], [""], ["also ok"]], header=["Text"])
+
+    monkeypatch.setenv("INPUT_CSV", str(input_path))
+    monkeypatch.setenv("BATCH_SIZE", "3")
+
+    main_mod = stub_inference(monkeypatch)
+    exit_code = main_mod.main()
+    assert exit_code == 0
+
+    output_path = tmp_path / "output" / "predictions.csv"
+    with output_path.open("r", newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        results = list(reader)
+
+    assert len(results) == 2
+
+
 def test_group_col_index_out_of_range(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     input_csv = tmp_path / "input.csv"

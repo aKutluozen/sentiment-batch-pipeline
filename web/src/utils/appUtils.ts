@@ -14,12 +14,12 @@ export const formatShortTimestamp = (timestamp: string) => {
   if (Number.isNaN(parsed.getTime())) {
     return timestamp;
   }
-  const ss = String(parsed.getSeconds()).padStart(2, "0");
   const mm = String(parsed.getMinutes()).padStart(2, "0");
   const hh = String(parsed.getHours()).padStart(2, "0");
   const dd = String(parsed.getDate()).padStart(2, "0");
+  const mo = String(parsed.getMonth() + 1).padStart(2, "0");
   const yy = String(parsed.getFullYear()).slice(-2);
-  return `${ss}/${mm}/${hh}-${dd}/${yy}`;
+  return `${mo}/${dd}/${yy}-${hh}/${mm}`;
 };
 
 export const sentimentClass = (labelValue: string) => {

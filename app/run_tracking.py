@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import time
 from typing import Any, Dict
@@ -16,6 +16,9 @@ class RunStats:
     processed: int = 0
     failed: int = 0
     rows_seen: int = 0
+    skipped: int = 0
+    invalid: int = 0
+    error_samples: list[str] = field(default_factory=list)
     score_sum: float = 0.0
     positive: int = 0
     negative: int = 0
@@ -57,6 +60,9 @@ def _base_payload(
         "rows_seen": stats.rows_seen,
         "processed": stats.processed,
         "failed": stats.failed,
+        "skipped": stats.skipped,
+        "invalid": stats.invalid,
+        "error_samples": stats.error_samples,
         "avg_score": round(stats.score_sum / stats.processed, 6) if stats.processed else 0,
         "positive": stats.positive,
         "negative": stats.negative,

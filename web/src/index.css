@@ -103,7 +103,7 @@ body {
 .metrics,
 .params {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 12px;
 }
 
@@ -209,6 +209,10 @@ body {
 
 .comparison-table .row {
   grid-template-columns: repeat(7, minmax(90px, 1fr));
+}
+
+.recent-table .row {
+  grid-template-columns: 1.6fr 1.6fr repeat(7, minmax(80px, 1fr));
 }
 
 .mini-sentiment {

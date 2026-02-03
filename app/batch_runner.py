@@ -29,21 +29,22 @@ def process_batch(
     dataset_type: str,
     start: float,
 ) -> None:
-    # Prepare texts
+    # Prepare texts (rows are already sanitized/validated)
     texts: List[str] = []
-    for r in batch_rows:
-        t = (r.get(text_col) or "").strip()
-        texts.append(t)
+    valid_rows: List[Dict[str, str]] = batch_rows
+
+    for r in valid_rows:
+        texts.append((r.get(text_col) or "").strip())
 
     batch_start = time.time()
     try:
         # Get predictions
         predictions = predict_fn(nlp, texts)
-        metrics.inc_processed(len(batch_rows))
+        metrics.inc_processed(len(valid_rows))
         metrics.inc_batches()
     except Exception as e:
         # Report failure for all rows in the batch
-        for r in batch_rows:
+        for r in valid_rows:
             out: Dict[str, Any] = {
                 text_col: r.get(text_col, ""),
                 "label": "",
@@ -51,8 +52,10 @@ def process_batch(
                 "error": str(e),
             }
             writer.writerow(out)
-        stats.failed += len(batch_rows)
-        metrics.inc_failed(len(batch_rows))
+        stats.failed += len(valid_rows)
+        metrics.inc_failed(len(valid_rows))
+        if len(stats.error_samples) < 5:
+            stats.error_samples.append(str(e))
         metrics.inc_batches()
         return
     finally:
@@ -72,7 +75,7 @@ def process_batch(
         )
 
     # Process predictions
-    for r, prediction in zip(batch_rows, predictions):
+    for r, prediction in zip(valid_rows, predictions):
         label = prediction.get("label", "")
         score = prediction.get("score", "")
         label_norm = (label or "").lower()
@@ -103,4 +106,4 @@ def process_batch(
             group_value = (r.get(group_col) or "").strip() or "(unknown)"
             update_group_stats(group_stats, group_value, label, score_val)
 
-    stats.processed += len(batch_rows)
+    stats.processed += len(valid_rows)

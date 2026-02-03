@@ -49,6 +49,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_write_live_snapshot(
+    {
+        "status": "idle",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "input_csv": "",
+        "output_csv": "",
+        "text_col": "",
+        "model_name": "",
+        "batch_size": 0,
+        "max_len": 0,
+        "max_rows": None,
+        "metrics_port": None,
+        "rows_seen": 0,
+        "processed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "invalid": 0,
+        "error_samples": [],
+        "avg_score": 0,
+        "positive": 0,
+        "negative": 0,
+        "neutral": 0,
+        "runtime_s": 0,
+    }
+)
+
 
 def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
     if not path.exists():

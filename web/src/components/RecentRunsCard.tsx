@@ -30,7 +30,7 @@ export default function RecentRunsCard({
           <option value="all">all</option>
         </select>
       </div>
-      <div className="table table-scroll">
+      <div className="table table-scroll recent-table">
         <div className="row header">
           <span>Time</span>
           <span>Model</span>
@@ -39,6 +39,8 @@ export default function RecentRunsCard({
           <span>Max rows</span>
           <span>Processed</span>
           <span>Failed</span>
+          <span>Skipped</span>
+          <span>Invalid</span>
           <span>Runtime (s)</span>
         </div>
         {filteredRuns
@@ -54,6 +56,8 @@ export default function RecentRunsCard({
               <span>{run.max_rows ?? "∞"}</span>
               <span>{run.processed}</span>
               <span>{run.failed}</span>
+              <span>{run.skipped ?? 0}</span>
+              <span>{run.invalid ?? 0}</span>
               <span>{run.runtime_s}</span>
             </div>
           ))}

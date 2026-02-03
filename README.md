@@ -4,7 +4,7 @@ Batch inference pipeline for CSV sentiment analysis with optional dashboard UI, 
 
 ## Features
 - Batch inference with tunable `BATCH_SIZE`, `MAX_LEN`, and optional `MAX_ROWS`
-- CSV header or headerless parsing
+- CSV header or headerless parsing with robust sanitization and validation
 - Optional group summaries by column index
 - Prometheus metrics plus live JSON metrics
 - Dashboard UI for uploads, runs, and analysis

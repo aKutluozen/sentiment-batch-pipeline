@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { ChartData, ChartOptions } from "chart.js";
 import { Line } from "react-chartjs-2";
 import { LiveSnapshot } from "../api";
+import { formatShortTimestamp } from "../utils/appUtils";
 
 type RunHistoryCardProps = {
   query: string;
@@ -22,7 +23,7 @@ export default function RunHistoryCard({
   filteredRuns,
 }: RunHistoryCardProps) {
   const runtimeData: ChartData<"line"> = useMemo(() => {
-    const labels = filteredRuns.map((run) => run.timestamp);
+    const labels = filteredRuns.map((run) => formatShortTimestamp(run.timestamp));
     return {
       labels,
       datasets: [
@@ -39,7 +40,7 @@ export default function RunHistoryCard({
   }, [filteredRuns]);
 
   const processedData: ChartData<"line"> = useMemo(() => {
-    const labels = filteredRuns.map((run) => run.timestamp);
+    const labels = filteredRuns.map((run) => formatShortTimestamp(run.timestamp));
     return {
       labels,
       datasets: [

@@ -1,0 +1,41 @@
+{
+  "dataset_type": "laptops_dataset_final_600",
+  "group_col": "rating",
+  "groups": [
+    {
+      "group": "5",
+      "total": 693,
+      "positive": 616,
+      "negative": 77,
+      "avg_score": 0.985497
+    },
+    {
+      "group": "4",
+      "total": 211,
+      "positive": 163,
+      "negative": 48,
+      "avg_score": 0.977129
+    },
+    {
+      "group": "3",
+      "total": 55,
+      "positive": 18,
+      "negative": 37,
+      "avg_score": 0.961061
+    },
+    {
+      "group": "1",
+      "total": 26,
+      "positive": 0,
+      "negative": 26,
+      "avg_score": 0.996798
+    },
+    {
+      "group": "2",
+      "total": 15,
+      "positive": 1,
+      "negative": 14,
+      "avg_score": 0.990162
+    }
+  ]
+}
