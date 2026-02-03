@@ -29,4 +29,4 @@ ENV RUN_HISTORY_PATH=/app/output/run_history.jsonl
 ENV RUN_LIVE_PATH=/app/output/live_metrics.json
 
 EXPOSE 8001
-CMD ["uvicorn", "dashboard_api.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8001"]
