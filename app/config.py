@@ -64,9 +64,15 @@ def load_settings() -> Settings:
     text_col = _get_str("TEXT_COL", "Text")
     text_col_index = _get_optional_int("TEXT_COL_INDEX")
 
+    if csv_mode == "headerless" and text_col_index is None:
+        raise ValueError("CSV_MODE=headerless requires TEXT_COL_INDEX")
+
+    if text_col_index is not None and text_col_index < 0:
+        raise ValueError("TEXT_COL_INDEX must be >= 0")
+
     group_col_index = _get_optional_int("GROUP_COL_INDEX")
-
-
+    if group_col_index is not None and group_col_index < 0:
+        raise ValueError("GROUP_COL_INDEX must be >= 0")
     model_name = _get_str(
         "MODEL_NAME",
         "distilbert-base-uncased-finetuned-sst-2-english",

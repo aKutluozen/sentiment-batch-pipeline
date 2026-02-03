@@ -1,34 +1,9 @@
 import csv
-import importlib
-import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
-
-def _write_csv(path: Path, rows: list[list[str]], header: list[str]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(header)
-        writer.writerows(rows)
-
-
-def _import_main(monkeypatch: pytest.MonkeyPatch):
-    class _Dummy:
-        @classmethod
-        def from_pretrained(cls, *_args, **_kwargs):
-            return cls()
-
-    dummy_module = SimpleNamespace(
-        AutoModelForSequenceClassification=_Dummy,
-        AutoTokenizer=_Dummy,
-        pipeline=lambda *_args, **_kwargs: None,
-    )
-    monkeypatch.setitem(sys.modules, "transformers", dummy_module)
-    main_mod = importlib.import_module("app.main")
-    return importlib.reload(main_mod)
+from tests.test_helper import import_main, write_csv
 
 
 def test_batch_failure_marks_errors_and_continues(
@@ -37,16 +12,17 @@ def test_batch_failure_marks_errors_and_continues(
     monkeypatch.chdir(tmp_path)
     input_path = tmp_path / "data" / "input.csv"
     rows = [[f"text {i}"] for i in range(5)]
-    _write_csv(input_path, rows=rows, header=["Text"])
+    write_csv(input_path, rows=rows, header=["Text"])
 
     monkeypatch.setenv("INPUT_CSV", str(input_path))
     monkeypatch.setenv("BATCH_SIZE", "2")
 
-    main_mod = _import_main(monkeypatch)
+    main_mod = import_main(monkeypatch)
     monkeypatch.setattr(main_mod, "load_sentiment_pipeline", lambda *_args, **_kwargs: object())
 
     calls = {"count": 0}
 
+    # Let's have a problem on the first batch
     def flaky_predict(_nlp, texts):
         calls["count"] += 1
         if calls["count"] == 1:
@@ -65,6 +41,7 @@ def test_batch_failure_marks_errors_and_continues(
         reader = csv.DictReader(handle)
         results = list(reader)
 
+    # Since a batch failed, all rows in that batch should have errors
     assert len(results) == 5
     errors = [row["error"] for row in results]
     assert sum(1 for value in errors if value) == 2

@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 import time
 from typing import Any, Dict
-
 from app.config import Settings
 
 logger = logging.getLogger("batch_infer")
@@ -23,14 +22,6 @@ class RunStats:
     neutral: int = 0
 
 
-def write_live_metrics_safe(path: Path, payload: Dict[str, Any]) -> None:
-    try:
-        write_live_metrics(path, payload)
-    except Exception:
-        logger.exception("Failed to write live metrics",
-                         extra={"run_live_path": str(path)})
-
-
 def append_run_history(path: Path, record: Dict[str, Any]) -> None:
     ensure_parent_dir(path)
     with path.open("a", encoding="utf-8") as f:
@@ -38,46 +29,53 @@ def append_run_history(path: Path, record: Dict[str, Any]) -> None:
 
 
 def write_live_metrics(path: Path, record: Dict[str, Any]) -> None:
-    ensure_parent_dir(path)
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(record, f, ensure_ascii=False)
+    try:
+        ensure_parent_dir(path)
+        with path.open("w", encoding="utf-8") as f:
+            json.dump(record, f, ensure_ascii=False)
+    except Exception:
+        logger.exception("Failed to write live metrics",
+                         extra={"run_live_path": str(path)})
+
+
+def _base_payload(
+    settings: Settings,
+    text_col: str,
+    stats: RunStats,
+    runtime_s: float,
+) -> Dict[str, Any]:
+    return {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "input_csv": str(settings.input_csv),
+        "output_csv": str(settings.output_csv),
+        "text_col": text_col,
+        "model_name": settings.model_name,
+        "batch_size": settings.batch_size,
+        "max_len": settings.max_len,
+        "max_rows": settings.max_rows,
+        "metrics_port": settings.metrics_port,
+        "rows_seen": stats.rows_seen,
+        "processed": stats.processed,
+        "failed": stats.failed,
+        "avg_score": round(stats.score_sum / stats.processed, 6) if stats.processed else 0,
+        "positive": stats.positive,
+        "negative": stats.negative,
+        "neutral": stats.neutral,
+        "runtime_s": runtime_s,
+    }
 
 
 def build_live_metrics_payload(
-    s: Settings,
+    settings: Settings,
     status: str,
     text_col: str,
-    rows_seen: int,
-    processed: int,
-    failed: int,
-    score_sum: float,
-    positive: int,
-    negative: int,
-    neutral: int,
+    stats: RunStats,
     runtime_s: float,
     dataset_type: str | None = None,
     group_col: str | None = None,
 ) -> Dict[str, Any]:
-    payload: Dict[str, Any] = {
-        "status": status,
-        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-        "input_csv": str(s.input_csv),
-        "output_csv": str(s.output_csv),
-        "text_col": text_col,
-        "model_name": s.model_name,
-        "batch_size": s.batch_size,
-        "max_len": s.max_len,
-        "max_rows": s.max_rows,
-        "metrics_port": s.metrics_port,
-        "rows_seen": rows_seen,
-        "processed": processed,
-        "failed": failed,
-        "avg_score": round(score_sum / processed, 6) if processed else 0,
-        "positive": positive,
-        "negative": negative,
-        "neutral": neutral,
-        "runtime_s": runtime_s,
-    }
+    payload = _base_payload(settings, text_col, stats, runtime_s)
+    payload["status"] = status
     if dataset_type is not None:
         payload["dataset_type"] = dataset_type
     if group_col is not None:
@@ -86,40 +84,17 @@ def build_live_metrics_payload(
 
 
 def build_run_history_payload(
-    s: Settings,
+    settings: Settings,
     text_col: str,
-    rows_seen: int,
-    processed: int,
-    failed: int,
-    score_sum: float,
-    positive: int,
-    negative: int,
-    neutral: int,
+    stats: RunStats,
     runtime_s: float,
     dataset_type: str | None,
     group_col: str | None,
 ) -> Dict[str, Any]:
-    return {
-        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-        "input_csv": str(s.input_csv),
-        "output_csv": str(s.output_csv),
-        "text_col": text_col,
-        "model_name": s.model_name,
-        "batch_size": s.batch_size,
-        "max_len": s.max_len,
-        "max_rows": s.max_rows,
-        "metrics_port": s.metrics_port,
-        "dataset_type": dataset_type,
-        "group_col": group_col,
-        "rows_seen": rows_seen,
-        "processed": processed,
-        "failed": failed,
-        "avg_score": round(score_sum / processed, 6) if processed else 0,
-        "positive": positive,
-        "negative": negative,
-        "neutral": neutral,
-        "runtime_s": runtime_s,
-    }
+    payload = _base_payload(settings, text_col, stats, runtime_s)
+    payload["dataset_type"] = dataset_type
+    payload["group_col"] = group_col
+    return payload
 
 
 def ensure_parent_dir(path: Path) -> None:

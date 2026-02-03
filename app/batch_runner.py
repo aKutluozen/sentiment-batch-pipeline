@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 from app.run_tracking import (
     RunStats, 
-    write_live_metrics_safe,
+    write_live_metrics,
     build_live_metrics_payload
 )
 from app.summary import update_group_stats
@@ -29,6 +29,7 @@ def process_batch(
     dataset_type: str,
     start: float,
 ) -> None:
+    # Prepare texts
     texts: List[str] = []
     for r in batch_rows:
         t = (r.get(text_col) or "").strip()
@@ -36,11 +37,12 @@ def process_batch(
 
     batch_start = time.time()
     try:
-        preds = predict_fn(nlp, texts)
+        # Get predictions
+        predictions = predict_fn(nlp, texts)
         metrics.inc_processed(len(batch_rows))
         metrics.inc_batches()
-
     except Exception as e:
+        # Report failure for all rows in the batch
         for r in batch_rows:
             out: Dict[str, Any] = {
                 text_col: r.get(text_col, ""),
@@ -54,34 +56,32 @@ def process_batch(
         metrics.inc_batches()
         return
     finally:
+        # Always record batch duration
         metrics.observe_batch_duration(time.time() - batch_start)
-        write_live_metrics_safe(
+        write_live_metrics(
             settings.run_live_path,
             build_live_metrics_payload(
                 settings,
                 status="running",
                 text_col=text_col,
-                rows_seen=stats.rows_seen,
-                processed=stats.processed,
-                failed=stats.failed,
-                score_sum=stats.score_sum,
-                positive=stats.positive,
-                negative=stats.negative,
-                neutral=stats.neutral,
+                stats=stats,
                 runtime_s=round(time.time() - start, 3),
                 dataset_type=dataset_type,
                 group_col=group_col,
             ),
         )
 
-    for r, pred in zip(batch_rows, preds):
-        label = pred.get("label", "")
-        score = pred.get("score", "")
+    # Process predictions
+    for r, prediction in zip(batch_rows, predictions):
+        label = prediction.get("label", "")
+        score = prediction.get("score", "")
         label_norm = (label or "").lower()
         try:
             score_val = float(score)
         except (TypeError, ValueError):
             score_val = 0.0
+            
+        # Update stats
         stats.score_sum += score_val
         if "pos" in label_norm:
             stats.positive += 1
@@ -89,6 +89,8 @@ def process_batch(
             stats.negative += 1
         else:
             stats.neutral += 1
+            
+        # Write output row and update group stats too
         out = {
             text_col: r.get(text_col, ""),
             "label": label,

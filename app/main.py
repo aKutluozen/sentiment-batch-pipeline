@@ -12,7 +12,8 @@ from app.inference import load_sentiment_pipeline, predict_batch
 from app.logging_utils import setup_logging
 from app.metrics import start_metrics_server
 from app.run_tracking import (
-    RunStats, write_live_metrics_safe,
+    RunStats, 
+    write_live_metrics,
     append_run_history,
     build_live_metrics_payload,
     build_run_history_payload,
@@ -55,19 +56,13 @@ def main() -> int:
     stats = RunStats()
     group_stats: Dict[str, Dict[str, float]] = {}  # In case of group summaries
 
-    write_live_metrics_safe(
+    write_live_metrics(
         settings.run_live_path,
         build_live_metrics_payload(
             settings,
             status="running",
             text_col=settings.text_col,
-            rows_seen=stats.rows_seen,
-            processed=stats.processed,
-            failed=stats.failed,
-            score_sum=stats.score_sum,
-            positive=stats.positive,
-            negative=stats.negative,
-            neutral=stats.neutral,
+            stats=stats,
             runtime_s=0,
         ),
     )
@@ -174,19 +169,13 @@ def main() -> int:
         },
     )
 
-    write_live_metrics_safe(
+    write_live_metrics(
         settings.run_live_path,
         build_live_metrics_payload(
             settings,
             status="complete",
             text_col=text_col,
-            rows_seen=stats.rows_seen,
-            processed=stats.processed,
-            failed=stats.failed,
-            score_sum=stats.score_sum,
-            positive=stats.positive,
-            negative=stats.negative,
-            neutral=stats.neutral,
+            stats=stats,
             runtime_s=runtime_s,
             dataset_type=dataset_type,
             group_col=group_col,
@@ -199,13 +188,7 @@ def main() -> int:
             build_run_history_payload(
                 settings,
                 text_col=text_col,
-                rows_seen=stats.rows_seen,
-                processed=stats.processed,
-                failed=stats.failed,
-                score_sum=stats.score_sum,
-                positive=stats.positive,
-                negative=stats.negative,
-                neutral=stats.neutral,
+                stats=stats,
                 runtime_s=runtime_s,
                 dataset_type=dataset_type,
                 group_col=group_col,
