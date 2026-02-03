@@ -16,7 +16,7 @@ Commands:
 
 Examples:
   ./run.sh
-  INPUT_CSV=data/Reviews.csv BATCH_SIZE=128 MAX_ROWS=500 ./run.sh headless
+  INPUT_CSV=data/test-set.csv TEXT_COL=text BATCH_SIZE=128 MAX_ROWS=500 ./run.sh headless
   ./run.sh dashboard
 EOF
 }
@@ -40,16 +40,8 @@ run_headless() {
     ARGS+=(-e TEXT_COL_INDEX="${TEXT_COL_INDEX}")
   fi
 
-  if [[ -n "${ID_COL_INDEX+x}" ]]; then
-    ARGS+=(-e ID_COL_INDEX="${ID_COL_INDEX}")
-  fi
-
   if [[ -n "${TEXT_COL+x}" ]]; then
     ARGS+=(-e TEXT_COL="${TEXT_COL}")
-  fi
-
-  if [[ -n "${ID_COL+x}" ]]; then
-    ARGS+=(-e ID_COL="${ID_COL}")
   fi
 
   if [[ -n "${INPUT_CSV+x}" ]]; then

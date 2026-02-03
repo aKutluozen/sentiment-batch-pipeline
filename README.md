@@ -154,15 +154,27 @@ Open http://localhost:8001
 
 ## Configuration
 Common overrides (env vars):
+- `INPUT_CSV=data/test-set.csv` (any readable file path)
+- `OUTPUT_CSV=output/predictions.csv` (any writable file path)
+- `RUN_HISTORY_PATH=output/run_history.jsonl` (any writable file path)
+- `RUN_LIVE_PATH=output/live_metrics.json` (any writable file path)
 - `CSV_MODE=header|headerless`
-- `TEXT_COL=text` (header mode)
-- `TEXT_COL_INDEX=5` (headerless mode, 0-based)
-- `GROUP_COL_INDEX=1` (optional grouping, 0-based)
-- `BATCH_SIZE=32`
-- `MAX_ROWS=10000`
-- `METRICS_PORT=8000`
+- `TEXT_COL=text` (any column name; used when `CSV_MODE=header`)
+- `TEXT_COL_INDEX=5` (integer >= 0; required when `CSV_MODE=headerless`)
+- `GROUP_COL_INDEX=1` (integer >= 0; optional)
+- `MODEL_NAME=distilbert-base-uncased-finetuned-sst-2-english` (any HF model id)
+- `BATCH_SIZE=32` (integer > 0)
+- `MAX_LEN=256` (integer > 0)
+- `MAX_ROWS=10000` (integer > 0; optional)
+- `METRICS_PORT=8000` (integer 1..65535; optional)
 
 If `METRICS_PORT` is set, the headless container exposes Prometheus metrics at `http://localhost:<METRICS_PORT>/metrics`.
+
+Run script overrides (Docker only):
+- `IMAGE_NAME=iqrush` (Docker image name for headless runs)
+- `DASHBOARD_IMAGE=iqrush-dashboard` (Docker image name for dashboard runs)
+- `DASHBOARD_PORT=8001` (integer 1..65535)
+- `HF_CACHE_VOLUME=hf_cache` (Docker volume name for model cache)
 
 Examples:
 ```bash
@@ -211,3 +223,6 @@ make test-docker
 
 ## Warnings
 - Some cleanup commands (especially `make clean-artifacts`) may require elevated permissions depending on how files were created. If you see permission errors, rerun with `sudo`.
+- First run can be slow because models are downloaded from Hugging Face; make sure you have enough disk space.
+- Large CSVs or high `BATCH_SIZE` values can increase RAM usage; lower `BATCH_SIZE` if you hit memory limits.
+- On Apple Silicon, CPU inference can be slower; try smaller models for quick tests.
