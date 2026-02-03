@@ -48,7 +48,8 @@ Outputs + live metrics  →  Dashboard API  →  Web UI
 
 ## How to use
 ### Step 1. Prerequisites
-Have a dataset ready. The application has been tested with the following datasets:
+Have your own dataset ready, or use the provided sample at `data/test-set.csv` for testing.
+The application has been tested with the following datasets:
 - [Sentiment140 (Kaggle)](https://www.kaggle.com/datasets/kazanova/sentiment140)
 - [Amazon Fine Food Reviews (Kaggle)](https://www.kaggle.com/datasets/snap/amazon-fine-food-reviews?resource=download)
 - [Rotten Tomatoes Movies and Reviews (Kaggle)](https://www.kaggle.com/datasets/andrezaza/clapper-massive-rotten-tomatoes-movies-and-reviews/data)
@@ -184,7 +185,7 @@ docker run --rm \
   ghcr.io/akutluozen/sentiment-batch-pipeline:latest
 ```
 
-### Dashboard only
+### Dashboard
 ```bash
 docker run --rm -p 8001:8001 \
   -v "$PWD/output:/app/output" \
