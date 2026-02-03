@@ -49,11 +49,11 @@ Open http://localhost:8001 to analyze runs and metrics.
 ## Run from source
 ### Headless (batch inference)
 ```bash
-make headless INPUT_CSV=data/Reviews.csv
+make run-headless INPUT_CSV=data/Reviews.csv
 ```
 Run the full headless example with all fields populated:
 ```bash
-make run-headless-example
+make run-example-headless
 ```
 
 ### Full Dashboard (UI + API)
@@ -147,11 +147,11 @@ Common overrides (env vars):
 
 Examples:
 ```bash
-CSV_MODE=headerless TEXT_COL_INDEX=2 INPUT_CSV=data/input.csv make headless
+CSV_MODE=headerless TEXT_COL_INDEX=2 INPUT_CSV=data/input.csv make run-headless
 
-GROUP_COL_INDEX=1 INPUT_CSV=data/input.csv make headless
+GROUP_COL_INDEX=1 INPUT_CSV=data/input.csv make run-headless
 
-METRICS_PORT=8000 INPUT_CSV=data/Reviews.csv make headless
+METRICS_PORT=8000 INPUT_CSV=data/Reviews.csv make run-headless
 ```
 
 Bash script equivalents:

@@ -1,4 +1,4 @@
-.PHONY: help headless dashboard test test-docker clean-docker clean-cache clean-artifacts clean-all
+.PHONY: help run-headless run-full run-example-headless test test-docker clean-docker clean-cache clean-artifacts clean-all
 
 VENV_PY := $(wildcard .venv/bin/python)
 ifeq ($(VENV_PY),)
@@ -9,8 +9,9 @@ endif
 
 help:
 	@echo "Targets:"
-	@echo "  headless       Run batch inference (no UI)"
-	@echo "  dashboard      Run dashboard (single container)"
+	@echo "  run-headless         Run batch inference (no UI)"
+	@echo "  run-full             Run dashboard (single container)"
+	@echo "  run-example-headless Run batch inference with sample dataset"
 	@echo "  test           Run pytest locally"
 	@echo "  test-docker    Run pytest in Docker"
 	@echo "  clean-docker   Stop/remove all Docker containers"
