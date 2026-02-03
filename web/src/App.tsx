@@ -178,6 +178,14 @@ export default function App() {
           tension: 0.3,
           fill: true,
         },
+        {
+          label: "Failed rows",
+          data: filteredRuns.map((run) => run.failed),
+          borderColor: "#ff6b6b",
+          backgroundColor: "rgba(255, 107, 107, 0.2)",
+          tension: 0.3,
+          fill: false,
+        },
       ],
     };
   }, [filteredRuns]);
@@ -187,7 +195,7 @@ export default function App() {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: { display: true },
       },
       scales: {
         x: {
