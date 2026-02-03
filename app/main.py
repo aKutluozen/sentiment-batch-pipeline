@@ -3,22 +3,21 @@ from __future__ import annotations
 import csv
 import logging
 import time
-from pathlib import Path
 from typing import Dict, List
 
 from app.batch_runner import process_batch
 from app.config import load_settings
 from app.csv_utils import process_csv
-from app.helpers import (
-    append_run_history,
-    build_live_metrics_payload,
-    build_run_history_payload,
-    ensure_parent_dir,
-)
 from app.inference import load_sentiment_pipeline, predict_batch
 from app.logging_utils import setup_logging
 from app.metrics import start_metrics_server
-from app.run_tracking import RunStats, write_live_metrics_safe
+from app.run_tracking import (
+    RunStats, write_live_metrics_safe,
+    append_run_history,
+    build_live_metrics_payload,
+    build_run_history_payload,
+    ensure_parent_dir
+)
 from app.summary import dataset_name_from_path, write_group_summary
 
 logger = logging.getLogger("batch_infer")
@@ -171,7 +170,7 @@ def main() -> int:
             "processed": stats.processed,
             "failed": stats.failed,
             "runtime_s": runtime_s,
-            "output_csv": str(s.output_csv),
+            "output_csv": str(settings.output_csv),
         },
     )
 
