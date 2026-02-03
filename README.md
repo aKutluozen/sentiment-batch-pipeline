@@ -50,9 +50,9 @@ Open http://localhost:8001 to analyze runs and metrics.
 ## Run from source
 ### Headless (batch inference)
 ```bash
-make run-headless INPUT_CSV=data/test-set.csv
+make run-headless INPUT_CSV=data/test-set.csv TEXT_COL=text
 ```
-Run the full headless example with all fields populated (uses `data/test-set.csv`):
+Run the full headless example with all fields populated (uses `data/test-set.csv` and `TEXT_COL=text`):
 ```bash
 make run-example-headless
 ```
@@ -69,7 +69,7 @@ Open http://localhost:8001
 ```
 Run with common overrides:
 ```bash
-INPUT_CSV=data/test-set.csv BATCH_SIZE=128 MAX_ROWS=500 ./run.sh headless
+INPUT_CSV=data/test-set.csv TEXT_COL=text BATCH_SIZE=128 MAX_ROWS=500 ./run.sh headless
 ```
 Run the dashboard:
 ```bash
@@ -99,6 +99,7 @@ services:
       - ./output:/output
     environment:
       INPUT_CSV: /data/test-set.csv
+      TEXT_COL: text
       OUTPUT_CSV: /output/predictions.csv
       MAX_ROWS: 500
       BATCH_SIZE: 128
@@ -122,6 +123,7 @@ docker run --rm \
   -v "$PWD/data:/data" \
   -v "$PWD/output:/output" \
   -e INPUT_CSV=/data/test-set.csv \
+  -e TEXT_COL=text \
   -e OUTPUT_CSV=/output/predictions.csv \
 	-e MAX_ROWS=500 \
 	-e BATCH_SIZE=128 \
@@ -139,7 +141,7 @@ Open http://localhost:8001
 ## Configuration
 Common overrides (env vars):
 - `CSV_MODE=header|headerless`
-- `TEXT_COL=Text` (header mode)
+- `TEXT_COL=text` (header mode)
 - `TEXT_COL_INDEX=5` (headerless mode, 0-based)
 - `GROUP_COL_INDEX=1` (optional grouping, 0-based)
 - `BATCH_SIZE=32`
@@ -148,20 +150,20 @@ Common overrides (env vars):
 
 Examples:
 ```bash
-CSV_MODE=headerless TEXT_COL_INDEX=2 INPUT_CSV=data/input.csv make run-headless
+CSV_MODE=headerless TEXT_COL_INDEX=2 INPUT_CSV=data/test-set.csv make run-headless
 
-GROUP_COL_INDEX=1 INPUT_CSV=data/input.csv make run-headless
+GROUP_COL_INDEX=1 MAX_ROWS=500 INPUT_CSV=data/test-set.csv TEXT_COL=text make run-headless
 
-METRICS_PORT=8000 INPUT_CSV=data/test-set.csv make run-headless
+METRICS_PORT=8000 INPUT_CSV=data/test-set.csv TEXT_COL=text make run-headless
 ```
 
 Bash script equivalents:
 ```bash
-CSV_MODE=headerless TEXT_COL_INDEX=2 INPUT_CSV=data/input.csv ./run.sh headless
+CSV_MODE=headerless TEXT_COL_INDEX=2 INPUT_CSV=data/test-set.csv ./run.sh headless
 
-GROUP_COL_INDEX=1 INPUT_CSV=data/input.csv ./run.sh headless
+GROUP_COL_INDEX=1 MAX_ROWS=500 INPUT_CSV=data/test-set.csv TEXT_COL=text ./run.sh headless
 
-METRICS_PORT=8000 INPUT_CSV=data/test-set.csv ./run.sh headless
+METRICS_PORT=8000 INPUT_CSV=data/test-set.csv TEXT_COL=text ./run.sh headless
 ```
 
 ## Outputs
