@@ -287,7 +287,17 @@ async def run_job(
     content = await file.read()
     upload_path.write_bytes(content)
 
-    resolved_output = output_csv or f"output/predictions_{timestamp}.csv"
+    if output_csv:
+        output_path = Path(output_csv)
+        if output_path.is_absolute():
+            resolved_output = str(output_path)
+        else:
+            if output_path.parts and output_path.parts[0] == "output":
+                resolved_output = str(output_path)
+            else:
+                resolved_output = str(Path("output") / output_path)
+    else:
+        resolved_output = f"output/predictions_{timestamp}.csv"
 
     env = os.environ.copy()
     env["INPUT_CSV"] = str(upload_path)
