@@ -27,6 +27,7 @@ def load_sentiment_pipeline(model_name: str, max_len: int):
         max_length=safe_max_len,
     )
 
-
+# Avoid reloading and reuse the pipeline
 def predict_batch(nlp, texts: List[str]) -> List[Dict[str, Any]]:
+    # Straight-forward prediction, no caching or further chunking
     return nlp(texts)

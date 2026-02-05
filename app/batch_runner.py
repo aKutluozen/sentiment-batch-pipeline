@@ -12,6 +12,10 @@ from app.run_tracking import (
 from app.summary import update_group_stats
 from app.config import Settings
 
+# What does this method do?
+# Use the NLP pipeline created, along with the predict function
+# Predict function is decoupled to allow easier testing and flexibility
+# The predict function takes the pipeline and list of texts, returns predictions
 
 def process_batch(
     batch_rows: List[Dict[str, str]],

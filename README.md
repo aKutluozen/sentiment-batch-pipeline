@@ -23,14 +23,8 @@ Full picture (end-to-end):
 - Serving: the API exposes run status, logs, predictions, and summaries.
 - UI: dashboard starts runs, monitors progress, metrics, and visualizes results.
 
-## Architecture at a glance
-```
-CSV file
-  ↓
-Batch pipeline (tokenize + infer)
-  ↓
-Outputs + live metrics  →  Dashboard API  →  Web UI
-```
+## Diagram
+![System diagram](docs/diagram.png)
 
 ## Design choices
 - **Explicit column selection**: No inference for text/group columns to avoid accidental misreads and keep runs predictable.
